@@ -12,7 +12,6 @@
 
         div.preload { font-family: 'Inter', 'Barlow Condensed'; position: absolute; left: -9999px; visibility: hidden; }
 
-        /* Real numeric input overlay used to edit scores/penalties */
         #scoreInput {
             position: absolute;
             display: none;
@@ -31,7 +30,6 @@
         #scoreInput:focus {
             border-color: #d7b56d;
         }
-        /* remove native number spinners */
         #scoreInput::-webkit-outer-spin-button,
         #scoreInput::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         #scoreInput[type=number] { -moz-appearance: textfield; }
@@ -45,7 +43,6 @@
     <script type="module">
         import { ligaMX } from './Players.js';
 
-        // Vincula cada equipo con su carpeta de plantilla y su escudo real
         const TEAM_LINKS = {
             'América': { key: 'clubAmerica', icon: 'ClubAmerica.png' },
             'Chivas': { key: 'chivas', icon: 'Chivas.png' },
@@ -63,11 +60,12 @@
             'Querétaro': { key: 'queretaro', icon: 'Queretaro.png' },
             'Necaxa': { key: 'necaxa', icon: 'Necaxa.png' },
             'FC Juárez': { key: 'fcJuarez', icon: 'Juarez.png' },
-            'San Luis': { key: 'atleticoSanLuis', icon: 'Sanluis.png' }
-            // Mazatlán no tiene plantilla/escudo cargados en Players.js
+            'San Luis': { key: 'atleticoSanLuis', icon: 'Sanluis.png' },
+            'Atlante': { key: 'atlante', icon: 'Atlante.png' }
         };
         const ICON_DIR = './LigaMXTeamIcons/';
 
+        // Mazatlán fue sustituido por Atlante en el torneo
         const TEAMS = [
             { id: 1, name: 'América', short: 'AME', c1: '#F5E97D', c2: '#0F2148' },
             { id: 2, name: 'Chivas', short: 'GUA', c1: '#E62129', c2: '#002E63' },
@@ -84,7 +82,7 @@
             { id: 13, name: 'Puebla', short: 'PUE', c1: '#003876', c2: '#808080' },
             { id: 14, name: 'Querétaro', short: 'QRO', c1: '#000000', c2: '#005CE6' },
             { id: 15, name: 'Necaxa', short: 'NEC', c1: '#E30613', c2: '#808080' },
-            { id: 16, name: 'Mazatlán', short: 'MAZ', c1: '#67216A', c2: '#000000' },
+            { id: 16, name: 'Atlante', short: 'ANT', c1: '#0C2C6B', c2: '#7A1230' },
             { id: 17, name: 'FC Juárez', short: 'JUA', c1: '#009B3A', c2: '#000000' },
             { id: 18, name: 'San Luis', short: 'ASL', c1: '#E30613', c2: '#002A54' }
         ];
@@ -106,8 +104,6 @@
             });
         }
 
-        // Devuelve el primer jugador disponible de una categoría, priorizando
-        // coincidencia de posición y evitando repetir el mismo jugador dos veces.
         function pickPlayer(team, category, posHint, usedKeys) {
             if (!team.rosterKey || !ligaMX[team.rosterKey]) return null;
             let arr = ligaMX[team.rosterKey][category];
@@ -117,6 +113,37 @@
             if (!candidate) candidate = arr.find(p => !usedKeys.has(team.short + '_' + p.name));
             if (candidate) usedKeys.add(team.short + '_' + candidate.name);
             return candidate;
+        }
+
+        // --- Reparto realista de goles / asistencias por plantilla completa --------
+        // Los goles y asistencias del equipo se reparten entre TODA la plantilla con
+        // pesos por posición: delanteros anotan mucho, mediocampistas ofensivos reparten
+        // y anotan algo, defensas anotan poco (balón parado), y los porteros casi nunca.
+        function buildWeightedPool(team, mode) {
+            if (!team.rosterKey || !ligaMX[team.rosterKey]) return [];
+            let roster = ligaMX[team.rosterKey];
+            let pool = [];
+            (roster.Delanteros || []).forEach(p => pool.push({ p, cat: 'DEL', weight: mode === 'goals' ? 3.2 : 1.1 }));
+            (roster.Mediocampistas || []).forEach(p => {
+                let ofensivo = p.pos === 'MCO' || p.pos === 'ED' || p.pos === 'EI';
+                pool.push({ p, cat: 'MED', weight: mode === 'goals' ? (ofensivo ? 1.8 : 0.7) : (ofensivo ? 3.4 : 1.6) });
+            });
+            (roster.Defensores || []).forEach(p => pool.push({ p, cat: 'DEF', weight: mode === 'goals' ? 0.35 : 0.5 }));
+            (roster.Arqueros || []).forEach(p => pool.push({ p, cat: 'POR', weight: mode === 'goals' ? 0.015 : 0.08 }));
+            return pool;
+        }
+
+        // Reparte `total` unidades enteras proporcionalmente al peso (mayores restos)
+        function distributeWeighted(team, total, mode) {
+            let pool = buildWeightedPool(team, mode);
+            if (pool.length === 0 || total <= 0) return [];
+            let totalWeight = pool.reduce((s, x) => s + x.weight, 0);
+            pool.forEach(x => { x.exact = total * x.weight / totalWeight; x.val = Math.floor(x.exact); });
+            let assigned = pool.reduce((s, x) => s + x.val, 0);
+            let remainder = total - assigned;
+            let byRemainder = [...pool].sort((a, b) => (b.exact - b.val) - (a.exact - a.val));
+            for (let i = 0; i < remainder && byRemainder.length > 0; i++) byRemainder[i % byRemainder.length].val++;
+            return pool.filter(x => x.val > 0).map(x => ({ player: x.p.name, role: x.p.pos || x.cat, cat: x.cat, team, val: x.val }));
         }
 
         let appState = 'intro';
@@ -137,7 +164,6 @@
         let hoveredId = null;
         let globalTime = 0;
 
-        // Sobrio: paleta profesional, bajo contraste de acentos, sin glow ni exceso de radios
         const THEME = {
             bgDark: '#0a0d12',
             bgLight: '#0e1219',
@@ -147,9 +173,10 @@
             borderHover: '#3a4453',
             text: '#eef1f5',
             textMuted: '#7a8494',
-            accent: '#c9a962',      // dorado apagado, tono "trofeo" — no neón
+            accent: '#c9a962',
             accentSoft: 'rgba(201, 169, 98, 0.12)',
             red: '#b8463c',
+            green: '#4c9a6a',
             pitch: '#12351f',
             font: "'Inter', sans-serif",
             fontDisplay: "'Barlow Condensed', sans-serif"
@@ -192,9 +219,7 @@
                 if (ctx.roundRect) ctx.roundRect(x - r, y - r, r * 2, r * 2, 4);
                 else ctx.rect(x - r, y - r, r * 2, r * 2);
                 ctx.clip();
-                // Fondo claro neutro para que escudos con transparencia/blanco se lean bien sobre tema oscuro
                 drawRect(x - r, y - r, r * 2, r * 2, '#f4f5f7', 0);
-                // Ajuste sin deformar: se calcula el tamaño real conservando su proporción (contain)
                 let pad = r * 2 * 0.14;
                 let boxW = r * 2 - pad, boxH = r * 2 - pad;
                 let scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
@@ -255,7 +280,6 @@
             computeAwards();
         }
 
-        // --- Premios / Once Ideal (con nombres reales de Players.js) ---------------
         const XI_SLOTS = [
             { label: 'Lateral Derecho', cat: 'Defensores', pos: 'LD' },
             { label: 'Central', cat: 'Defensores', pos: 'DC' },
@@ -274,25 +298,28 @@
             if (played.length === 0) { awards = { scorers: [], assists: [], keepers: [], xi: null }; return; }
             let usedKeys = new Set();
 
-            // Goleo: el delantero titular de cada equipo recibe los goles del equipo
-            let scorers = played.map(t => {
-                let p = pickPlayer(t, 'Delanteros', 'DC', usedKeys);
-                return { player: p ? p.name : 'Delantero', role: p && p.pos ? p.pos : 'DC', team: t, g: Math.ceil(t.gf * 0.55) };
-            }).filter(s => s.g > 0).sort((a, b) => b.g - a.g);
+            let scorers = [];
+            played.forEach(t => {
+                distributeWeighted(t, t.gf, 'goals').forEach(x => {
+                    scorers.push({ player: x.player, role: x.role, team: t, g: x.val, cat: x.cat });
+                });
+            });
+            scorers.sort((a, b) => b.g - a.g || a.player.localeCompare(b.player));
 
-            // Asistencias: el mediocampista ofensivo titular
-            let assists = played.map(t => {
-                let p = pickPlayer(t, 'Mediocampistas', 'MCO', usedKeys);
-                return { player: p ? p.name : 'Mediocampista', role: p && p.pos ? p.pos : 'MCO', team: t, a: Math.floor(t.gf * 0.35) };
-            }).filter(x => x.a > 0).sort((a, b) => b.a - a.a);
+            let assists = [];
+            played.forEach(t => {
+                let totalAsist = Math.round(t.gf * 0.72);
+                distributeWeighted(t, totalAsist, 'assists').forEach(x => {
+                    assists.push({ player: x.player, role: x.role, team: t, a: x.val, cat: x.cat });
+                });
+            });
+            assists.sort((a, b) => b.a - a.a || a.player.localeCompare(b.player));
 
-            // Vallas menos vencidas: el portero titular de cada equipo
             let keepers = played.map(t => {
-                let p = pickPlayer(t, 'Arqueros', null, new Set()); // el portero titular puede repetirse en su propio equipo
+                let p = pickPlayer(t, 'Arqueros', null, new Set());
                 return { player: p ? p.name : 'Portero', team: t, ga: t.ga, pld: t.pld };
             }).sort((a, b) => (a.ga / a.pld) - (b.ga / b.pld));
 
-            // Once ideal: equipos mejor ubicados aportan un jugador real por posición
             let pool = [...played].sort((a, b) => (b.pts + b.gd) - (a.pts + a.gd));
             let xiUsed = new Set();
             let idx = 0;
@@ -359,8 +386,6 @@
 
         function renderIntro() {
             drawRect(0, 0, vw, vh, THEME.bgDark);
-
-            // línea horizontal sutil de fondo, referencia a una hoja de datos / tabla
             ctx.strokeStyle = 'rgba(255,255,255,0.04)';
             ctx.lineWidth = 1;
             for (let ly = 0; ly < vh; ly += 42) {
@@ -733,7 +758,6 @@
             maxScrollY = Math.max(0, y - (startY + scrollY) - vh + 100);
         }
 
-        // --- Tab de premios / once ideal --------------------------------------------
         function awardCard(x, y, w, h, label, value, sub, team) {
             drawRect(x, y, w, h, THEME.card, 4);
             strokeRect(x, y, w, h, THEME.border, 1, 4);
@@ -741,6 +765,42 @@
             if (team) drawBadge(team, x + w - 26, y + 22, 11);
             drawText(value, x + 18, y + h - 34, THEME.text, 17, 'left', '700', THEME.fontDisplay);
             drawText(sub, x + 18, y + h - 14, THEME.textMuted, 11, 'left', '500');
+        }
+
+        // Tabla completa de goleadores/asistidores, con TODOS los jugadores que anotaron
+        function drawRankingTable(x, y, w, title, list, valueKey) {
+            drawRect(x, y, w, 44, THEME.cardHover, 4);
+            strokeRect(x, y, w, 44, THEME.border, 1, 4);
+            drawText(title, x + 18, y + 22, THEME.text, 13, 'left', '700');
+            drawText(`${list.length} jugadores`, x + w - 16, y + 22, THEME.textMuted, 10, 'right', '500');
+            y += 44;
+
+            if (list.length === 0) {
+                drawRect(x, y, w, 46, THEME.card, 0); strokeRect(x, y, w, 46, THEME.border, 1, 0);
+                drawText("Sin datos todavía", x + w / 2, y + 23, THEME.textMuted, 11, 'center', '500');
+                return y + 46;
+            }
+
+            list.forEach((item, i) => {
+                let rowH = 36;
+                let bg = i % 2 === 0 ? THEME.card : THEME.bgDark;
+                drawRect(x, y, w, rowH, bg, 0);
+                strokeRect(x, y, w, rowH, THEME.border, 1, 0);
+
+                let rankColor = i < 3 ? THEME.accent : THEME.textMuted;
+                drawText(String(i + 1), x + 16, y + rowH / 2, rankColor, 11, 'left', '700');
+                drawBadge(item.team, x + 42, y + rowH / 2, 10);
+                drawText(item.player, x + 60, y + rowH / 2, THEME.text, 12, 'left', '600');
+
+                let posLabel = item.role || item.cat || '';
+                drawText(posLabel, x + w - 130, y + rowH / 2, THEME.textMuted, 9.5, 'left', '500');
+                drawText(item.team.short, x + w - 62, y + rowH / 2, THEME.textMuted, 10, 'left', '500');
+                drawText(String(item[valueKey]), x + w - 20, y + rowH / 2, THEME.text, 13, 'right', '700');
+
+                y += rowH;
+            });
+
+            return y + 10;
         }
 
         function renderPlantel(startY) {
@@ -761,7 +821,6 @@
                 return;
             }
 
-            // Fila de premios individuales
             let isMobile = vw < 720;
             let cardsPerRow = isMobile ? 1 : 3;
             let gap = 16;
@@ -787,9 +846,21 @@
             });
 
             y += isMobile ? (cards.length * (cardH + gap)) : (cardH + gap);
-            y += 10;
+            y += 26;
 
-            // Once ideal — cancha
+            let twoCol = vw >= 900;
+            if (twoCol) {
+                let colW = (contentW - 20) / 2;
+                let yG = drawRankingTable(padX, y, colW, "TABLA DE GOLEO", awards.scorers, 'g');
+                let yA = drawRankingTable(padX + colW + 20, y, colW, "TABLA DE ASISTENCIAS", awards.assists, 'a');
+                y = Math.max(yG, yA) + 20;
+            } else {
+                y = drawRankingTable(padX, y, contentW, "TABLA DE GOLEO", awards.scorers, 'g');
+                y += 16;
+                y = drawRankingTable(padX, y, contentW, "TABLA DE ASISTENCIAS", awards.assists, 'a');
+                y += 20;
+            }
+
             drawText("ONCE IDEAL DE LA TEMPORADA", padX, y + 8, THEME.text, 16, 'left', '700');
             y += 32;
 
@@ -800,7 +871,6 @@
             drawRect(pitchX, y, pitchW, pitchH, THEME.pitch, 4);
             strokeRect(pitchX, y, pitchW, pitchH, THEME.border, 1, 4);
 
-            // líneas de cancha
             ctx.strokeStyle = 'rgba(255,255,255,0.14)';
             ctx.lineWidth = 1;
             strokeRect(pitchX + 20, y + 20, pitchW - 40, pitchH - 40, 'rgba(255,255,255,0.14)', 1);
@@ -837,7 +907,6 @@
             maxScrollY = Math.max(0, y - (startY + scrollY) - vh + 100);
         }
 
-        // --- Edición de marcadores con input HTML real, sin teclado personalizado ---
         function openScoreInput(screenBox, obj, field, callback) {
             scoreInputEl.style.display = 'block';
             scoreInputEl.style.left = screenBox.x + 'px';

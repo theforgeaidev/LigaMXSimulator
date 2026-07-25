@@ -95,7 +95,7 @@ const chivas = {
         { name: "Sebastián Liceaga", dorsal: 31 }
     ],
     Defensores: [
-        { name: "José Castillo", pos: "DC", dorsal: 2 },
+        { name: "José Castillo", pos: "LD", dorsal: 2 },
         { name: "Diego Campillo", pos: "DC", dorsal: 3 },
         { name: "Miguel Tapias", pos: "DC", dorsal: 4 },
         { name: "Bryan González", pos: "LI", dorsal: 5 },
@@ -138,14 +138,14 @@ const clubAmerica = {
     Defensores: [
         { name: "Emilio Lara", pos: "LD", dorsal: 2 },
         { name: "Israel Reyes", pos: "LD", dorsal: 3 },
-        { name: "Sebastian Caceres", pos: "DF", dorsal: 4 },
+        { name: "Sebastian Caceres", pos: "DC", dorsal: 4 },
         { name: "Kevin Alvarez", pos: "LD", dorsal: 5 },
         { name: "Ralph Orquin", pos: "LD", dorsal: 15 },
         { name: "Aaron Mejia", pos: "LD", dorsal: 18 },
         { name: "Franco Rossano", pos: "LI", dorsal: 24 },
         { name: "Cristian Borja", pos: "LI", dorsal: 26 },
-        { name: "Ramon Juarez", pos: "DF", dorsal: 29 },
-        { name: "Miguel Vazquez", pos: "DF", dorsal: 32 },
+        { name: "Ramon Juarez", pos: "DC", dorsal: 29 },
+        { name: "Miguel Vazquez", pos: "DC", dorsal: 32 },
         { name: "Dagoberto Espinoza", pos: "LD", dorsal: 34 }
     ],
     Mediocampistas: [
@@ -181,14 +181,14 @@ const cruzAzul = {
     ],
     Defensores: [
         { name: "Omar Campos", pos: "LI", dorsal: 3 },
-        { name: "Willer Ditta", pos: "DF", dorsal: 4 },
-        { name: "Jesus Orozco Chiquete", pos: "DF", dorsal: 5 },
-        { name: "Alán Montes", pos: "DF", dorsal: 12 },
+        { name: "Willer Ditta", pos: "DC", dorsal: 4 },
+        { name: "Jesus Orozco Chiquete", pos: "DC", dorsal: 5 },
+        { name: "Alán Montes", pos: "DC", dorsal: 12 },
         { name: "Jorge Rodarte", pos: "LD", dorsal: 22 },
         { name: "Fernando Sámano", pos: "LD", dorsal: 25 },
-        { name: "Raymundo Rubio", pos: "DF", dorsal: 28 },
-        { name: "Cristian Jiménez", pos: "DF", dorsal: 32 },
-        { name: "Gonzalo Piovi", pos: "DF", dorsal: 33 }
+        { name: "Raymundo Rubio", pos: "DC", dorsal: 28 },
+        { name: "Cristian Jiménez", pos: "DC", dorsal: 32 },
+        { name: "Gonzalo Piovi", pos: "DC", dorsal: 33 }
     ],
     Mediocampistas: [
         { name: "Érik Lira", pos: "MCD", dorsal: 6 },
@@ -241,7 +241,7 @@ const leon = {
         { name: "Fernando Beltran", pos: "MC", dorsal: 6 },
         { name: "Daniel Arcila", pos: "MCO", dorsal: 13 },
         { name: "Rodrigo Echeverría", pos: "MCD", dorsal: 20 },
-        { name: "Ángel Estrada", pos: "MI", dorsal: 24 },
+        { name: "Ángel Estrada", pos: "MCO", dorsal: 24 },
         { name: "Iván Rodríguez", pos: "MCD", dorsal: 29 }
     ],
     Delanteros: [
@@ -369,7 +369,7 @@ const tigres = {
         { name: "Rômulo", pos: "MCD", dorsal: 23 }
     ],
     Delanteros: [
-        { name: "Angel Correa", pos: "SD", dorsal: 7 },
+        { name: "Angel Correa", pos: "ED", dorsal: 7 },
         { name: "Diego Lainez", pos: "ED", dorsal: 16 },
         { name: "Rodrigo Aguirre", pos: "DC", dorsal: 17 },
         { name: "Marcelo Flores", pos: "EI", dorsal: 20 },
@@ -400,7 +400,7 @@ const tijuana = {
         { name: "Iván Tona", pos: "MCD", dorsal: 8 },
         { name: "Gilberto Mora", pos: "MCO", dorsal: 10 },
         { name: "Ignacio Rivero", pos: "MC", dorsal: 15 },
-        { name: "Ramiro Árciga", pos: "MD", dorsal: 17 },
+        { name: "Ramiro Árciga", pos: "MC", dorsal: 17 },
         { name: "Ángel Zapata", pos: "MCD", dorsal: 20 },
         { name: "Aldahir Perez", pos: "MCO", dorsal: 26 },
         { name: "Frank Boya", pos: "MCD", dorsal: 34 }
@@ -432,7 +432,7 @@ const queretaro = {
         { name: "Daniel Parra", pos: "LI", dorsal: 27 }
     ],
     Mediocampistas: [
-        { name: "Enzo Giménez", pos: "MD", dorsal: 93 },
+        { name: "Enzo Giménez", pos: "MC", dorsal: 93 },
         { name: "Juan Cázares", pos: "MC", dorsal: 94 },
         { name: "Christopher Figueroa", pos: "MCO", dorsal: 95 },
         { name: "Carlo García", pos: "MC", dorsal: 4 },
@@ -532,7 +532,7 @@ const necaxa = {
         { name: "Kevin Rosero", pos: "ED", dorsal: 7 },
         { name: "Julian Carranza", pos: "DC", dorsal: 21 },
         { name: "Ricardo Monreal", pos: "DC", dorsal: 30 },
-        { name: "Javier Ruiz", pos: "MCO", dorsal: 35 }
+        { name: "Javier Ruiz", pos: "EI", dorsal: 35 }
     ]
 };
 // #endregion
@@ -547,33 +547,33 @@ const toluca = {
         { name: "Luis García", dorsal: 22 }
     ],
     Defensores: [
-        { name: "Diego Barbosa", dorsal: 2 },
-        { name: "Antonio Briseño", dorsal: 3 },
-        { name: "Bruno Mendez", dorsal: 4 },
-        { name: "Andres Pereira", dorsal: 6 },
-        { name: "Luan Garcia", dorsal: 13 },
-        { name: "Brian García", dorsal: 17 },
-        { name: "Santiago Simon", dorsal: 19 },
-        { name: "Jesús Gallardo", dorsal: 20 },
-        { name: "Everardo López", dorsal: 25 }
+        { name: "Diego Barbosa", pos: "LD", dorsal: 2 },
+        { name: "Antonio Briseño", pos: "DC", dorsal: 3 },
+        { name: "Bruno Mendez", pos: "DC", dorsal: 4 },
+        { name: "Andres Pereira", pos: "DC", dorsal: 6 },
+        { name: "Luan Garcia", pos: "DC", dorsal: 13 },
+        { name: "Brian García", pos: "LI", dorsal: 17 },
+        { name: "Santiago Simon", pos: "DC", dorsal: 19 },
+        { name: "Jesús Gallardo", pos: "LI", dorsal: 20 },
+        { name: "Everardo López", pos: "LD", dorsal: 25 }
     ],
     Mediocampistas: [
-        { name: "Franco Romero", dorsal: 5 },
-        { name: "Víctor Guzmán", dorsal: 7 },
-        { name: "Nicolas Castro", dorsal: 8 },
-        { name: "Jesús Angulo", dorsal: 10 },
-        { name: "Marcel Ruiz", dorsal: 14 },
-        { name: "Pavel Pérez", dorsal: 15 },
-        { name: "Fernando Arce", dorsal: 24 },
-        { name: "Jorge Díaz", dorsal: 29 }
+        { name: "Franco Romero", pos: "MCD", dorsal: 5 },
+        { name: "Víctor Guzmán", pos: "MC", dorsal: 7 },
+        { name: "Nicolas Castro", pos: "MCO", dorsal: 8 },
+        { name: "Jesús Angulo", pos: "MC", dorsal: 10 },
+        { name: "Marcel Ruiz", pos: "MC", dorsal: 14 },
+        { name: "Pavel Pérez", pos: "MCD", dorsal: 15 },
+        { name: "Fernando Arce", pos: "MC", dorsal: 24 },
+        { name: "Jorge Díaz", pos: "MCO", dorsal: 29 }
     ],
     Delanteros: [
-        { name: "Ernesto Vega", dorsal: 9 },
-        { name: "Helio Nunes", dorsal: 11 },
-        { name: "Edgar López", dorsal: 21 },
-        { name: "Oswaldo Virgen", dorsal: 23 },
-        { name: "Joao Dias", dorsal: 26 },
-        { name: "Erick Gutiérrez", dorsal: 35 }
+        { name: "Ernesto Vega", pos: "DC", dorsal: 9 },
+        { name: "Helio Nunes", pos: "ED", dorsal: 11 },
+        { name: "Edgar López", pos: "ED", dorsal: 21 },
+        { name: "Oswaldo Virgen", pos: "EI", dorsal: 23 },
+        { name: "Joao Dias", pos: "DC", dorsal: 26 },
+        { name: "Erick Gutiérrez", pos: "DC", dorsal: 35 }
     ]
 };
 // #endregion
@@ -586,32 +586,32 @@ const santosLaguna = {
         { name: "Héctor Holguín", dorsal: 33 }
     ],
     Defensores: [
-        { name: "Mauricio Cuevas", dorsal: 3 },
-        { name: "José Abella", dorsal: 4 },
-        { name: "Efraín Orona", dorsal: 14 },
-        { name: "Emmanuel Echeverría", dorsal: 17 },
-        { name: "Franco Pardo", dorsal: 18 },
-        { name: "Kevin Picón", dorsal: 22 },
-        { name: "Felipe Sánchez", dorsal: 25 },
-        { name: "Jonathan Pérez", dorsal: 28 }
+        { name: "Mauricio Cuevas", pos: "LI", dorsal: 3 },
+        { name: "José Abella", pos: "DC", dorsal: 4 },
+        { name: "Efraín Orona", pos: "DC", dorsal: 14 },
+        { name: "Emmanuel Echeverría", pos: "LD", dorsal: 17 },
+        { name: "Franco Pardo", pos: "DC", dorsal: 18 },
+        { name: "Kevin Picón", pos: "LD", dorsal: 22 },
+        { name: "Felipe Sánchez", pos: "DC", dorsal: 25 },
+        { name: "Jonathan Pérez", pos: "LI", dorsal: 28 }
     ],
     Mediocampistas: [
-        { name: "Aldo López", dorsal: 5 },
-        { name: "Javier Güemez", dorsal: 6 },
-        { name: "Diego González", dorsal: 7 },
-        { name: "Salvador Mariscal", dorsal: 8 },
-        { name: "Ezequiel Bullaude", dorsal: 10 },
-        { name: "Carlos Gruezo", dorsal: 11 },
-        { name: "Joshua Mancha", dorsal: 15 },
-        { name: "Francisco Villalba", dorsal: 21 },
-        { name: "Diego Medina", dorsal: 24 },
-        { name: "Ramiro Sordo", dorsal: 26 },
-        { name: "Kevin Palacios", dorsal: 77 }
+        { name: "Aldo López", pos: "MCD", dorsal: 5 },
+        { name: "Javier Güemez", pos: "MC", dorsal: 6 },
+        { name: "Diego González", pos: "MC", dorsal: 7 },
+        { name: "Salvador Mariscal", pos: "MCD", dorsal: 8 },
+        { name: "Ezequiel Bullaude", pos: "MCO", dorsal: 10 },
+        { name: "Carlos Gruezo", pos: "MCD", dorsal: 11 },
+        { name: "Joshua Mancha", pos: "MC", dorsal: 15 },
+        { name: "Francisco Villalba", pos: "MCO", dorsal: 21 },
+        { name: "Diego Medina", pos: "MC", dorsal: 24 },
+        { name: "Ramiro Sordo", pos: "MCO", dorsal: 26 },
+        { name: "Kevin Palacios", pos: "MC", dorsal: 77 }
     ],
     Delanteros: [
-        { name: "Lucas Di Yorio", dorsal: 9 },
-        { name: "Eduardo Aguirre", dorsal: 19 },
-        { name: "Tahiel Jiménez", dorsal: 29 }
+        { name: "Lucas Di Yorio", pos: "DC", dorsal: 9 },
+        { name: "Eduardo Aguirre", pos: "DC", dorsal: 19 },
+        { name: "Tahiel Jiménez", pos: "EI", dorsal: 29 }
     ]
 };
 // #endregion
@@ -624,33 +624,33 @@ const puebla = {
         { name: "Jesús Rodríguez", dorsal: 33 }
     ],
     Defensores: [
-        { name: "Ángel Leyva", dorsal: 2 },
-        { name: "Juan Vargas", dorsal: 4 },
-        { name: "Facundo Almada", dorsal: 5 },
-        { name: "Eduardo Navarro", dorsal: 13 },
-        { name: "Oscar Villa", dorsal: 15 },
-        { name: "José Pachuca", dorsal: 20 }
+        { name: "Ángel Leyva", pos: "LD", dorsal: 2 },
+        { name: "Juan Vargas", pos: "DC", dorsal: 4 },
+        { name: "Facundo Almada", pos: "DC", dorsal: 5 },
+        { name: "Eduardo Navarro", pos: "DC", dorsal: 13 },
+        { name: "Oscar Villa", pos: "LI", dorsal: 15 },
+        { name: "José Pachuca", pos: "DC", dorsal: 20 }
     ],
     Mediocampistas: [
-        { name: "Alberto Herrera", dorsal: 3 },
-        { name: "Fernando Monárrez", dorsal: 7 },
-        { name: "Omar Moreno", dorsal: 8 },
-        { name: "Mathías Tomas", dorsal: 10 },
-        { name: "Iker Moreno", dorsal: 12 },
-        { name: "Alonso Ramírez", dorsal: 16 },
-        { name: "Raúl Castillo", dorsal: 17 },
-        { name: "Sergio Sanabria", dorsal: 21 },
-        { name: "Carlos Baltazar", dorsal: 22 },
-        { name: "Alejandro Organista", dorsal: 24 },
-        { name: "Kevin Velasco", dorsal: 26 },
-        { name: "Brayan Garnica", dorsal: 27 },
-        { name: "Lucas Azevedo", dorsal: 34 }
+        { name: "Alberto Herrera", pos: "MC", dorsal: 3 },
+        { name: "Fernando Monárrez", pos: "MC", dorsal: 7 },
+        { name: "Omar Moreno", pos: "MCD", dorsal: 8 },
+        { name: "Mathías Tomas", pos: "MCO", dorsal: 10 },
+        { name: "Iker Moreno", pos: "MC", dorsal: 12 },
+        { name: "Alonso Ramírez", pos: "MCD", dorsal: 16 },
+        { name: "Raúl Castillo", pos: "MC", dorsal: 17 },
+        { name: "Sergio Sanabria", pos: "MCO", dorsal: 21 },
+        { name: "Carlos Baltazar", pos: "MC", dorsal: 22 },
+        { name: "Alejandro Organista", pos: "MCO", dorsal: 24 },
+        { name: "Kevin Velasco", pos: "MCD", dorsal: 26 },
+        { name: "Brayan Garnica", pos: "MC", dorsal: 27 },
+        { name: "Lucas Azevedo", pos: "MC", dorsal: 34 }
     ],
     Delanteros: [
-        { name: "Luifer Hernández", dorsal: 9 },
-        { name: "Emiliano Gómez", dorsal: 11 },
-        { name: "Ignacio Maestro", dorsal: 19 },
-        { name: "Eduardo Mustre", dorsal: 29 }
+        { name: "Luifer Hernández", pos: "DC", dorsal: 9 },
+        { name: "Emiliano Gómez", pos: "ED", dorsal: 11 },
+        { name: "Ignacio Maestro", pos: "EI", dorsal: 19 },
+        { name: "Eduardo Mustre", pos: "DC", dorsal: 29 }
     ]
 };
 // #endregion
@@ -664,32 +664,32 @@ const fcJuarez = {
         { name: "Guillermo Ruiz", dorsal: 27 }
     ],
     Defensores: [
-        { name: "Gilberto Sepúlveda", dorsal: 2 },
-        { name: "Jesús Murillo", dorsal: 3 },
-        { name: "Manuel Mayorga", dorsal: 4 },
-        { name: "Eder López", dorsal: 14 },
-        { name: "Javier Aquino", dorsal: 20 },
-        { name: "Oscar Ortega", dorsal: 23 },
-        { name: "Francisco Nevárez", dorsal: 33 },
-        { name: "Bryan Romero", dorsal: 35 }
+        { name: "Gilberto Sepúlveda", pos: "LD", dorsal: 2 },
+        { name: "Jesús Murillo", pos: "DC", dorsal: 3 },
+        { name: "Manuel Mayorga", pos: "DC", dorsal: 4 },
+        { name: "Eder López", pos: "LI", dorsal: 14 },
+        { name: "Javier Aquino", pos: "LD", dorsal: 20 },
+        { name: "Oscar Ortega", pos: "DC", dorsal: 23 },
+        { name: "Francisco Nevárez", pos: "DC", dorsal: 33 },
+        { name: "Bryan Romero", pos: "LI", dorsal: 35 }
     ],
     Mediocampistas: [
-        { name: "Denzell García", dorsal: 5 },
-        { name: "Ramón Rodríguez", dorsal: 6 },
-        { name: "Raymundo Fulgencio", dorsal: 7 },
-        { name: "Guilherme Castilho", dorsal: 8 },
-        { name: "Madson De Souza Silva", dorsal: 9 },
-        { name: "Ían Torres", dorsal: 10 },
-        { name: "Jose Rodriguez", dorsal: 11 },
-        { name: "Lucas Romero", dorsal: 15 },
-        { name: "Juan Sigala", dorsal: 16 },
-        { name: "Ricardo Oliveira", dorsal: 21 },
-        { name: "Said Godínez", dorsal: 25 }
+        { name: "Denzell García", pos: "MCD", dorsal: 5 },
+        { name: "Ramón Rodríguez", pos: "MC", dorsal: 6 },
+        { name: "Raymundo Fulgencio", pos: "MC", dorsal: 7 },
+        { name: "Guilherme Castilho", pos: "MCD", dorsal: 8 },
+        { name: "Madson De Souza Silva", pos: "MCO", dorsal: 9 },
+        { name: "Ían Torres", pos: "MCO", dorsal: 10 },
+        { name: "Jose Rodriguez", pos: "MC", dorsal: 11 },
+        { name: "Lucas Romero", pos: "MCD", dorsal: 15 },
+        { name: "Juan Sigala", pos: "MC", dorsal: 16 },
+        { name: "Ricardo Oliveira", pos: "MCO", dorsal: 21 },
+        { name: "Said Godínez", pos: "MC", dorsal: 25 }
     ],
     Delanteros: [
-        { name: "Luca Martínez", dorsal: 17 },
-        { name: "Oscar Estupiñan", dorsal: 19 },
-        { name: "Ettson Ayón", dorsal: 29 }
+        { name: "Luca Martínez", pos: "ED", dorsal: 17 },
+        { name: "Oscar Estupiñan", pos: "DC", dorsal: 19 },
+        { name: "Ettson Ayón", pos: "EI", dorsal: 29 }
     ]
 };
 // #endregion
@@ -702,28 +702,28 @@ const atlas = {
         { name: "Antonio Sánchez", dorsal: 22 }
     ],
     Defensores: [
-        { name: "Gustavo Ferrareis", dorsal: 2 },
-        { name: "Jorge Sánchez", dorsal: 3 },
-        { name: "Adrián Mora", dorsal: 4 },
-        { name: "Jorge Rodríguez", dorsal: 5 },
-        { name: "Gaddi Aguirre", dorsal: 13 },
-        { name: "Paulo Ramírez", dorsal: 15 },
-        { name: "Milton Valenzuela", dorsal: 16 },
-        { name: "José Lozano", dorsal: 17 },
-        { name: "Rodrigo Schlegel", dorsal: 21 },
-        { name: "Manuel Capasso", dorsal: 28 }
+        { name: "Gustavo Ferrareis", pos: "LD", dorsal: 2 },
+        { name: "Jorge Sánchez", pos: "LD", dorsal: 3 },
+        { name: "Adrián Mora", pos: "DC", dorsal: 4 },
+        { name: "Jorge Rodríguez", pos: "DC", dorsal: 5 },
+        { name: "Gaddi Aguirre", pos: "DC", dorsal: 13 },
+        { name: "Paulo Ramírez", pos: "LI", dorsal: 15 },
+        { name: "Milton Valenzuela", pos: "LI", dorsal: 16 },
+        { name: "José Lozano", pos: "DC", dorsal: 17 },
+        { name: "Rodrigo Schlegel", pos: "DC", dorsal: 21 },
+        { name: "Manuel Capasso", pos: "DC", dorsal: 28 }
     ],
     Mediocampistas: [
-        { name: "Edgar Zaldivar", dorsal: 6 },
-        { name: "Luis Leite", dorsal: 10 },
-        { name: "Luis De Barros", dorsal: 11 },
-        { name: "Sergio Hernández", dorsal: 23 },
-        { name: "Aldo Rocha", dorsal: 26 },
-        { name: "Víctor Ríos", dorsal: 27 },
-        { name: "Arturo González", dorsal: 58 }
+        { name: "Edgar Zaldivar", pos: "MCD", dorsal: 6 },
+        { name: "Luis Leite", pos: "MC", dorsal: 10 },
+        { name: "Luis De Barros", pos: "MCO", dorsal: 11 },
+        { name: "Sergio Hernández", pos: "MC", dorsal: 23 },
+        { name: "Aldo Rocha", pos: "MCO", dorsal: 26 },
+        { name: "Víctor Ríos", pos: "MCD", dorsal: 27 },
+        { name: "Arturo González", pos: "MC", dorsal: 58 }
     ],
     Delanteros: [
-        { name: "Ryan Mmaee", dorsal: 8 }
+        { name: "Ryan Mmaee", pos: "DC", dorsal: 8 }
     ]
 };
 // #endregion
