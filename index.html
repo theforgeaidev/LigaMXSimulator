@@ -1,22 +1,19 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-[#0F0F0F]">
+<html lang="es" class="h-full">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Simulador Pro</title>
+    <title>Programa Oficial — Torneo Apertura</title>
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Anton&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <script>
@@ -25,15 +22,17 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
-                        display: ['Outfit', 'sans-serif'],
+                        display: ['Anton', 'sans-serif'],
+                        serif: ['Source Serif 4', 'serif'],
+                        mono: ['Space Mono', 'monospace'],
                     },
                     colors: {
-                        background: '#0F0F0F',
-                        surface: '#151515',
-                        surfaceHover: '#1c1c1c',
-                        borderLine: '#262626',
-                        accent: '#00FFAA',
-                        accentMuted: 'rgba(0, 255, 170, 0.1)',
+                        ink: '#131213',
+                        paper: '#F3EEE2',
+                        paper2: '#EAE3D2',
+                        rule: '#D8CFB8',
+                        matchred: '#B01C2E',
+                        signal: '#1C6B4A',
                     }
                 }
             }
@@ -41,98 +40,109 @@
     </script>
 
     <style>
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        html, body { background: #131213; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; font-variant-numeric: tabular-nums; }
+
+        /* Halftone dot texture, like a printed matchday program */
+        .halftone {
+            background-image: radial-gradient(rgba(19,18,19,0.5) 1px, transparent 1px);
+            background-size: 6px 6px;
+        }
+        .halftone-light {
+            background-image: radial-gradient(rgba(243,238,226,0.35) 1px, transparent 1px);
+            background-size: 5px 5px;
         }
 
-        input[type=number] {
-            -moz-appearance: textfield;
-            font-variant-numeric: tabular-nums;
+        .paper-grain {
+            background-image:
+                repeating-linear-gradient(0deg, rgba(19,18,19,0.025) 0px, rgba(19,18,19,0.025) 1px, transparent 1px, transparent 3px);
         }
 
         .glass-header {
-            background: rgba(14, 14, 14, 0.9);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid #262626;
+            background: #131213;
+            border-bottom: 3px solid #F3EEE2;
         }
 
-        .tab-content {
-            display: none;
-            opacity: 0;
-            transform: translateY(8px);
-            transition: all 0.3s ease-out;
-        }
-
-        .tab-content.active {
-            display: block;
-            opacity: 1;
-            transform: translateY(0);
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
         .score-input:focus {
-            box-shadow: 0 0 0 2px rgba(0, 255, 170, 0.5);
-            border-color: #00FFAA;
-            background: #050505;
+            outline: none;
+            box-shadow: inset 0 0 0 2px #131213;
+            background: #fff;
         }
 
-        .standings-row {
-            transition: background-color 0.2s ease;
+        /* Ticket perforation — actual torn notches on the side of a program card */
+        .stub {
+            position: relative;
+        }
+        .stub::before, .stub::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            width: 18px; height: 18px;
+            background: #131213;
+            border-radius: 999px;
+            transform: translateY(-50%);
+            z-index: 5;
+        }
+        .stub::before { left: -9px; }
+        .stub::after { right: -9px; }
+        .stub-line {
+            border-left: 2px dashed #131213;
+            opacity: 0.35;
         }
 
-        .standings-row:hover {
-            background-color: #1c1c1c;
+        /* Split-flap scoreboard digit look for jornada selector */
+        .flap {
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
         }
 
-        .glow-active {
-            box-shadow: 0 0 16px rgba(0, 255, 170, 0.35);
+        .stamp {
+            font-family: 'Anton', sans-serif;
+            letter-spacing: 0.06em;
+            transform: rotate(-4deg);
         }
+
+        ::selection { background: #131213; color: #F3EEE2; }
+
+        .rotate-tag { writing-mode: vertical-rl; }
     </style>
 </head>
 
-<body
-    class="h-full flex flex-col font-sans antialiased text-gray-300 bg-background overflow-x-hidden selection:bg-accent selection:text-black">
+<body class="h-full flex flex-col font-sans antialiased text-ink bg-ink overflow-x-hidden">
 
     <header class="glass-header sticky top-0 z-50 w-full">
-        <div
-            class="max-w-6xl mx-auto px-4 h-[104px] flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
-            <div class="hidden sm:flex items-center gap-3 text-white font-display font-bold text-2xl tracking-wide">
-                <div
-                    class="w-10 h-10 rounded-xl bg-accent text-black flex items-center justify-center shadow-[0_0_20px_rgba(0,255,170,0.2)]">
-                    <i class="ph-fill ph-trophy"></i>
+        <div class="max-w-6xl mx-auto px-4 h-auto sm:h-[104px] py-4 sm:py-0 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="hidden sm:flex items-end gap-3 text-paper">
+                <div class="leading-[0.8]">
+                    <div class="font-display text-[13px] tracking-[0.35em] text-matchred mb-1">EDICIÓN JORNADA</div>
+                    <div class="font-display text-[38px] tracking-wide text-paper">TORNEO<br>APERTURA</div>
                 </div>
-                LIGA PRO
             </div>
 
-            <!-- Segmented Control Nav -->
-            <nav
-                class="flex items-center p-1.5 bg-[#050505] rounded-2xl border border-borderLine w-full sm:w-auto shadow-inner">
+            <nav class="flex items-stretch bg-paper w-full sm:w-auto border-2 border-paper">
                 <button onclick="switchTab('inicio')" id="tab-btn-inicio"
-                    class="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-semibold transition-all text-black bg-white shadow-sm">
-                    Inicio
+                    class="flex-1 sm:flex-none px-6 py-3 font-display text-sm tracking-[0.15em] transition-all bg-ink text-paper">
+                    JORNADA
                 </button>
                 <button onclick="switchTab('tabla')" id="tab-btn-tabla"
-                    class="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-semibold transition-all text-gray-500 hover:text-gray-200">
-                    Tabla
+                    class="flex-1 sm:flex-none px-6 py-3 font-display text-sm tracking-[0.15em] transition-all text-ink hover:bg-paper2 border-l-2 border-ink">
+                    TABLA
                 </button>
                 <button onclick="switchTab('liguilla')" id="tab-btn-liguilla"
-                    class="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-semibold transition-all text-gray-500 hover:text-gray-200 flex items-center justify-center gap-2">
-                    <i class="ph-fill ph-fire"></i> Liguilla
+                    class="flex-1 sm:flex-none px-6 py-3 font-display text-sm tracking-[0.15em] transition-all text-ink hover:bg-paper2 border-l-2 border-ink">
+                    LIGUILLA
                 </button>
                 <button onclick="switchTab('goleadores')" id="tab-btn-goleadores"
-                    class="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-semibold transition-all text-gray-500 hover:text-gray-200">
-                    Goleadores
+                    class="flex-1 sm:flex-none px-6 py-3 font-display text-sm tracking-[0.15em] transition-all text-ink hover:bg-paper2 border-l-2 border-ink">
+                    GOLEO
                 </button>
             </nav>
         </div>
@@ -140,132 +150,107 @@
 
     <main class="flex-1 w-full max-w-6xl mx-auto px-4 py-8">
 
-        <!-- ================= INICIO TAB (Partidos) ================= -->
-        <div id="tab-inicio" class="tab-content active space-y-8">
-            <div class="flex flex-col gap-5">
-                <!-- Selector de Jornadas con padding aumentado para que no se corte el glow -->
-                <div class="relative w-full -mx-4 px-4 sm:mx-0 sm:px-0">
-                    <div
-                        class="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent pointer-events-none z-10">
-                    </div>
-
-                    <div id="jornada-scroll"
-                        class="flex items-center gap-3 overflow-x-auto py-4 px-4 sm:px-2 snap-x hide-scrollbar scroll-smooth">
-                        <!-- JS injects buttons here -->
-                    </div>
-
-                    <div
-                        class="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none z-10">
-                    </div>
-                </div>
+        <!-- ================= INICIO TAB ================= -->
+        <div id="tab-inicio" class="tab-content active space-y-5">
+            <div class="relative w-full -mx-4 px-4 sm:mx-0 sm:px-0">
+                <div id="jornada-scroll" class="flex items-stretch gap-0 overflow-x-auto hide-scrollbar scroll-smooth border-y-2 border-paper/20"></div>
             </div>
 
-            <div class="bg-surface border border-borderLine rounded-3xl p-5 sm:p-8 shadow-2xl">
-                <div class="flex items-center justify-between mb-8">
-                    <h2 id="jornada-title" class="font-display text-2xl font-bold text-white tracking-wide">
-                        Jornada 1
-                    </h2>
+            <div class="bg-paper paper-grain border-2 border-paper">
+                <div class="flex items-center justify-between px-6 sm:px-8 pt-7 pb-5 border-b-2 border-dashed border-ink/25">
+                    <div>
+                        <div class="font-mono text-[10px] tracking-[0.3em] text-matchred uppercase">Programa · Jornada</div>
+                        <h2 id="jornada-title" class="font-display text-4xl text-ink tracking-wide leading-none mt-1">JORNADA 01</h2>
+                    </div>
                     <button onclick="clearCurrentJornada()"
-                        class="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-300 transition-colors bg-[#0a0a0a] px-4 py-2 rounded-xl border border-borderLine">
-                        <i class="ph ph-eraser"></i> Limpiar
+                        class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wide text-ink/70 hover:text-matchred transition-colors border-2 border-ink/25 hover:border-matchred px-4 py-2">
+                        <i class="ph ph-x"></i> Limpiar
                     </button>
                 </div>
 
-                <div id="matches-container" class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    <!-- JS injects match cards here -->
-                </div>
+                <div id="matches-container" class="grid grid-cols-1 lg:grid-cols-2"></div>
             </div>
         </div>
 
         <!-- ================= TABLA TAB ================= -->
         <div id="tab-tabla" class="tab-content">
-            <div class="bg-surface border border-borderLine rounded-3xl p-5 sm:p-8 shadow-2xl">
-                <div class="flex flex-col sm:flex-row justify-between items-start mb-6">
+            <div class="bg-paper paper-grain border-2 border-paper">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-6 sm:px-8 pt-7 pb-5 border-b-2 border-dashed border-ink/25">
                     <div>
-                        <h2 class="font-display text-2xl font-bold text-white">Clasificación</h2>
+                        <div class="font-mono text-[10px] tracking-[0.3em] text-matchred uppercase">Clasificación General</div>
+                        <h2 class="font-display text-4xl text-ink tracking-wide leading-none mt-1">TABLA</h2>
+                    </div>
+                    <div class="flex items-center gap-2 text-[11px] font-mono font-bold uppercase tracking-wide text-ink/70">
+                        <span class="inline-block w-3 h-3 bg-matchred"></span> Los primeros 8 avanzan a Liguilla
                     </div>
                 </div>
 
-                <!-- Tabla Optimizada -->
-                <div class="w-full overflow-hidden rounded-2xl border border-borderLine bg-[#050505]">
-                    <div
-                        class="grid grid-cols-[40px_1fr_60px_40px_40px_40px_40px_80px_60px] gap-2 p-4 text-[11px] uppercase tracking-widest text-gray-500 font-bold border-b border-borderLine">
-                        <div class="text-center">#</div>
-                        <div>Club</div>
-                        <div class="text-center">PTS</div>
-                        <div class="text-center">PJ</div>
-                        <div class="text-center">G</div>
-                        <div class="text-center">E</div>
-                        <div class="text-center">P</div>
-                        <div class="text-center">GF:GC</div>
-                        <div class="text-center">DIF</div>
-                    </div>
-                    <div id="standings-body" class="divide-y divide-borderLine/50">
-                        <!-- JS injects rows -->
-                    </div>
+                <div class="w-full overflow-x-auto hide-scrollbar">
+                    <table class="w-full text-left border-collapse whitespace-nowrap min-w-[640px]">
+                        <thead>
+                            <tr class="text-[10.5px] text-ink/60 uppercase tracking-widest font-mono font-bold border-b-2 border-ink/20">
+                                <th class="py-3 px-4 w-10 text-center">#</th>
+                                <th class="py-3 px-2 text-left">Club</th>
+                                <th class="py-3 px-3 text-center text-ink font-bold">Pts</th>
+                                <th class="py-3 px-3 text-center">PJ</th>
+                                <th class="py-3 px-3 text-center">G</th>
+                                <th class="py-3 px-3 text-center">E</th>
+                                <th class="py-3 px-3 text-center">P</th>
+                                <th class="py-3 px-3 text-center">GF:GC</th>
+                                <th class="py-3 px-3 text-center">DIF</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standings-body"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
         <!-- ================= LIGUILLA TAB ================= -->
         <div id="tab-liguilla" class="tab-content">
-            <div class="flex items-center justify-between mb-6 px-2">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
                 <div>
-                    <h2 class="font-display text-2xl font-bold text-white tracking-wide flex items-center gap-3">
-                        Fase Final <i class="ph-fill ph-fire text-accent"></i>
-                    </h2>
-                    <p class="text-sm text-gray-500 mt-1">El mejor en la tabla general avanza en caso de empate global.
+                    <div class="font-mono text-[10px] tracking-[0.3em] text-matchred uppercase">Fase Final</div>
+                    <h2 class="font-display text-4xl text-paper tracking-wide leading-none mt-1">LIGUILLA</h2>
+                    <p class="text-xs text-paper/60 mt-3 font-mono max-w-lg leading-relaxed">
+                        IDA Y VUELTA. SI EL GLOBAL EMPATA, AVANZA QUIEN ESTÉ MEJOR POSICIONADO EN LA TABLA GENERAL —
+                        EXCEPTO EN LA FINAL, DONDE EL EMPATE SE RESUELVE EN TIEMPOS EXTRA Y PENALES, SIN IMPORTAR LA TABLA.
                     </p>
                 </div>
                 <button onclick="generateLiguilla()"
-                    class="bg-white text-black font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-gray-200 transition-colors shadow-sm">
-                    Actualizar Llaves
+                    class="bg-paper text-ink font-display text-sm tracking-[0.15em] px-6 py-3 border-2 border-paper hover:bg-matchred hover:text-paper hover:border-matchred transition-colors shrink-0">
+                    ACTUALIZAR LLAVES
                 </button>
             </div>
 
-            <div class="space-y-10">
-                <!-- Cuartos -->
-                <div class="bg-surface border border-borderLine rounded-3xl p-6 shadow-2xl">
-                    <h3
-                        class="font-display text-lg font-bold text-white mb-6 uppercase tracking-wider text-center sm:text-left">
-                        Cuartos de Final</h3>
-                    <div id="liguilla-cuartos" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- JS injects cuartos -->
+            <div class="space-y-6">
+                <div>
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="font-display text-3xl text-matchred leading-none">01</span>
+                        <h3 class="font-mono text-xs font-bold text-paper uppercase tracking-[0.25em]">Cuartos de Final</h3>
                     </div>
+                    <div id="liguilla-cuartos" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
                 </div>
 
-                <!-- Semifinales -->
-                <div class="bg-surface border border-borderLine rounded-3xl p-6 shadow-2xl relative">
-                    <div
-                        class="absolute -top-5 left-1/2 -translate-x-1/2 bg-background border border-borderLine px-4 py-1 rounded-full text-xs text-gray-500 font-medium">
-                        Ganadores Cuartos</div>
-                    <h3
-                        class="font-display text-lg font-bold text-white mb-6 uppercase tracking-wider text-center sm:text-left">
-                        Semifinales</h3>
-                    <div id="liguilla-semis" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- JS injects semis -->
-                        <div class="col-span-1 lg:col-span-2 text-center text-gray-600 py-8 text-sm font-medium"
-                            id="semis-placeholder">
-                            Completa los Cuartos de Final para definir los cruces.
+                <div>
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="font-display text-3xl text-matchred leading-none">02</span>
+                        <h3 class="font-mono text-xs font-bold text-paper uppercase tracking-[0.25em]">Semifinales</h3>
+                    </div>
+                    <div id="liguilla-semis" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="col-span-1 lg:col-span-2 text-center text-paper/40 py-10 text-xs font-mono uppercase tracking-wide border-2 border-dashed border-paper/20" id="semis-placeholder">
+                            Completa los Cuartos de Final para definir los cruces
                         </div>
                     </div>
                 </div>
 
-                <!-- Final -->
-                <div
-                    class="bg-surface border-2 border-accent/20 rounded-3xl p-6 shadow-[0_0_40px_rgba(0,255,170,0.05)] relative overflow-hidden">
-                    <div
-                        class="absolute top-0 right-0 w-64 h-64 bg-accent rounded-full filter blur-[120px] opacity-10 pointer-events-none">
-                    </div>
-                    <div
-                        class="absolute -top-5 left-1/2 -translate-x-1/2 bg-background border border-borderLine px-4 py-1 rounded-full text-xs text-gray-500 font-medium">
-                        Gran Final</div>
-                    <h3 class="font-display text-xl font-black text-accent mb-6 uppercase tracking-widest text-center">
-                        La Gran Final</h3>
-                    <div id="liguilla-final" class="max-w-2xl mx-auto">
-                        <!-- JS injects final -->
-                        <div class="text-center text-gray-600 py-8 text-sm font-medium" id="final-placeholder">
-                            Completa las Semifinales para conocer a los finalistas.
+                <div class="bg-paper paper-grain border-2 border-paper p-6 sm:p-8">
+                    <h3 class="font-display text-2xl text-ink mb-6 tracking-wide text-center flex items-center justify-center gap-3">
+                        <i class="ph-fill ph-trophy text-matchred"></i> GRAN FINAL <i class="ph-fill ph-trophy text-matchred"></i>
+                    </h3>
+                    <div id="liguilla-final" class="max-w-xl mx-auto">
+                        <div class="text-center text-ink/40 py-10 text-xs font-mono uppercase tracking-wide border-2 border-dashed border-ink/20" id="final-placeholder">
+                            Completa las Semifinales para conocer a los finalistas
                         </div>
                     </div>
                 </div>
@@ -274,36 +259,43 @@
 
         <!-- ================= GOLEADORES TAB ================= -->
         <div id="tab-goleadores" class="tab-content">
-            <div class="bg-surface border border-borderLine rounded-3xl p-5 sm:p-8 shadow-2xl">
-                <h2 class="font-display text-2xl font-bold text-white tracking-wide mb-6">Goleo Individual</h2>
-                <div id="goleadores-list" class="flex flex-col gap-2">
-                    <!-- JS populates list -->
+            <div class="bg-paper paper-grain border-2 border-paper">
+                <div class="px-6 sm:px-8 pt-7 pb-5 border-b-2 border-dashed border-ink/25">
+                    <div class="font-mono text-[10px] tracking-[0.3em] text-matchred uppercase">Individual</div>
+                    <h2 class="font-display text-4xl text-ink tracking-wide leading-none mt-1">GOLEO</h2>
                 </div>
+                <div id="goleadores-list" class="flex flex-col"></div>
             </div>
         </div>
 
     </main>
 
+    <footer class="w-full py-7 mt-4">
+        <div class="max-w-6xl mx-auto px-4 text-center text-[10px] font-mono uppercase tracking-[0.3em] text-paper/30">
+            18 CLUBES · 17 JORNADAS · TODOS CONTRA TODOS A UNA VUELTA
+        </div>
+    </footer>
+
     <script>
         const TEAMS = [
-            { id: 1, name: 'Alpha City', short: 'ALP', colors: ['#FF0055', '#7A0029'] },
-            { id: 2, name: 'Beta United', short: 'BET', colors: ['#0077FF', '#003380'] },
-            { id: 3, name: 'Gamma FC', short: 'GAM', colors: ['#00FFAA', '#006644'] },
-            { id: 4, name: 'Delta Athletic', short: 'DEL', colors: ['#FFB700', '#805C00'] },
-            { id: 5, name: 'Epsilon Club', short: 'EPS', colors: ['#8800FF', '#3D0073'] },
-            { id: 6, name: 'Zeta Rovers', short: 'ZET', colors: ['#FF00AA', '#660044'] },
-            { id: 7, name: 'Eta Dynamo', short: 'ETA', colors: ['#00E5FF', '#005560'] },
-            { id: 8, name: 'Theta Stars', short: 'THE', colors: ['#FF5500', '#662200'] },
-            { id: 9, name: 'Iota Wanderers', short: 'IOT', colors: ['#AACC00', '#445500'] },
-            { id: 10, name: 'Kappa Metro', short: 'KAP', colors: ['#5566FF', '#222266'] },
-            { id: 11, name: 'Lambda Coast', short: 'LAM', colors: ['#00C49A', '#004D3C'] },
-            { id: 12, name: 'Mu Valley', short: 'MUV', colors: ['#E63946', '#590008'] },
-            { id: 13, name: 'Nu Rangers', short: 'NUR', colors: ['#F4A261', '#663B19'] },
-            { id: 14, name: 'Xi Sporting', short: 'XIS', colors: ['#E76F51', '#5B1F11'] },
-            { id: 15, name: 'Omicron CF', short: 'OMI', colors: ['#48CAE4', '#023E8A'] },
-            { id: 16, name: 'Pi North', short: 'PIN', colors: ['#2DC653', '#10451D'] },
-            { id: 17, name: 'Rho South', short: 'RHO', colors: ['#7B2CBF', '#240046'] },
-            { id: 18, name: 'Sigma Elite', short: 'SIG', colors: ['#FF9E00', '#FF6D00'] }
+            { id: 1, name: 'Alpha City', short: 'ALP', colors: ['#B01C2E', '#5C1712'] },
+            { id: 2, name: 'Beta United', short: 'BET', colors: ['#1C4E9C', '#0B2A55'] },
+            { id: 3, name: 'Gamma FC', short: 'GAM', colors: ['#1C6B4A', '#0A4A2C'] },
+            { id: 4, name: 'Delta Athletic', short: 'DEL', colors: ['#B4841F', '#7A5B10'] },
+            { id: 5, name: 'Epsilon Club', short: 'EPS', colors: ['#5A3B96', '#3A2266'] },
+            { id: 6, name: 'Zeta Rovers', short: 'ZET', colors: ['#A02F5E', '#5C1A38'] },
+            { id: 7, name: 'Eta Dynamo', short: 'ETA', colors: ['#1D7C87', '#0F4750'] },
+            { id: 8, name: 'Theta Stars', short: 'THE', colors: ['#B0591F', '#6B330F'] },
+            { id: 9, name: 'Iota Wanderers', short: 'IOT', colors: ['#6D8321', '#3F4D0F'] },
+            { id: 10, name: 'Kappa Metro', short: 'KAP', colors: ['#3743A0', '#1E255C'] },
+            { id: 11, name: 'Lambda Coast', short: 'LAM', colors: ['#1B7A64', '#0D4A3C'] },
+            { id: 12, name: 'Mu Valley', short: 'MUV', colors: ['#8E2530', '#521015'] },
+            { id: 13, name: 'Nu Rangers', short: 'NUR', colors: ['#A2661E', '#6B3D19'] },
+            { id: 14, name: 'Xi Sporting', short: 'XIS', colors: ['#8E3B22', '#5C2110'] },
+            { id: 15, name: 'Omicron CF', short: 'OMI', colors: ['#245F8E', '#123754'] },
+            { id: 16, name: 'Pi North', short: 'PIN', colors: ['#227A38', '#0F4D1D'] },
+            { id: 17, name: 'Rho South', short: 'RHO', colors: ['#5B2782', '#331546'] },
+            { id: 18, name: 'Sigma Elite', short: 'SIG', colors: ['#A0570A', '#6B3D00'] }
         ];
 
         const TOTAL_ROUNDS = 17;
@@ -311,12 +303,7 @@
         let tournamentData = [];
         let teamStats = [];
 
-        // Liguilla State
-        let liguilla = {
-            cuartos: [],
-            semis: [],
-            final: null
-        };
+        let liguilla = { cuartos: [], semis: [], final: null };
 
         function generateSchedule() {
             let pool = TEAMS.map(t => t.id);
@@ -338,29 +325,27 @@
             }
         }
 
-        function getAvatarHtml(team, size = 'w-9 h-9', fontSize = 'text-sm') {
-            if (!team) return `<div class="${size} rounded-xl bg-borderLine"></div>`;
+        function getBadgeHtml(team, size = 'w-9 h-9', fontSize = 'text-sm') {
+            if (!team) return `<div class="${size} bg-ink/10"></div>`;
             return `
-                <div class="${size} rounded-xl flex items-center justify-center text-white font-display font-bold ${fontSize} flex-shrink-0 shadow-md border border-white/5" 
-                     style="background: linear-gradient(135deg, ${team.colors[0]} 0%, ${team.colors[1]} 100%);">
+                <div class="${size} flex items-center justify-center text-paper font-display ${fontSize} flex-shrink-0"
+                     style="background: ${team.colors[0]};">
                     ${team.name.charAt(0)}
                 </div>
             `;
         }
 
-        // --- STREAMING_CHUNK:UI Navigation & Matches Rendering ---
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
 
-            const btnClasses = "flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2";
-            const activeStyle = "text-black bg-white shadow-sm";
-            const inactiveStyle = "text-gray-500 hover:text-gray-200";
+            const base = "flex-1 sm:flex-none px-6 py-3 font-display text-sm tracking-[0.15em] transition-all border-l-2 border-ink";
+            const activeStyle = "bg-ink text-paper border-l-0";
+            const inactiveStyle = "text-ink hover:bg-paper2";
 
-            ['inicio', 'tabla', 'liguilla', 'goleadores'].forEach(id => {
+            ['inicio', 'tabla', 'liguilla', 'goleadores'].forEach((id, i) => {
                 const btn = document.getElementById(`tab-btn-${id}`);
-                // preserve inner HTML for icons
-                const content = btn.innerHTML;
-                btn.className = `${btnClasses} ${id === tabId ? activeStyle : inactiveStyle}`;
+                const borderCls = i === 0 ? "" : "border-l-2 border-ink";
+                btn.className = `flex-1 sm:flex-none px-6 py-3 font-display text-sm tracking-[0.15em] transition-all ${borderCls} ${id === tabId ? 'bg-ink text-paper' : 'text-ink hover:bg-paper2'}`;
             });
 
             document.getElementById(`tab-${tabId}`).classList.add('active');
@@ -379,13 +364,14 @@
 
             for (let i = 1; i <= TOTAL_ROUNDS; i++) {
                 const btn = document.createElement('button');
-                btn.innerText = `J${i}`;
+                const num = String(i).padStart(2, '0');
+                btn.innerHTML = num;
                 btn.onclick = () => selectRound(i);
 
                 if (i === currentRound) {
-                    btn.className = "shrink-0 px-6 py-2.5 rounded-xl font-display font-bold text-sm bg-accent text-black snap-center transition-all glow-active";
+                    btn.className = "flap shrink-0 w-14 h-14 flex items-center justify-center text-2xl bg-matchred text-paper transition-all border-r border-paper/10";
                 } else {
-                    btn.className = "shrink-0 px-6 py-2.5 rounded-xl font-medium text-sm text-gray-500 bg-[#0a0a0a] border border-borderLine hover:bg-[#111] hover:text-gray-300 snap-center transition-all";
+                    btn.className = "flap shrink-0 w-14 h-14 flex items-center justify-center text-2xl text-paper/40 hover:text-paper hover:bg-paper/5 transition-all border-r border-paper/10";
                 }
                 container.appendChild(btn);
             }
@@ -393,7 +379,7 @@
 
         function selectRound(round) {
             currentRound = round;
-            document.getElementById('jornada-title').innerText = `Jornada ${round}`;
+            document.getElementById('jornada-title').innerText = `JORNADA ${String(round).padStart(2, '0')}`;
             renderMatchdaySelector();
             renderMatches();
 
@@ -417,409 +403,367 @@
                 const teamA = TEAMS.find(t => t.id === match.away);
 
                 const card = document.createElement('div');
-                card.className = "bg-[#0a0a0a] border border-borderLine rounded-2xl p-4 flex items-center justify-between gap-2 hover:border-white/10 transition-colors";
-                // --- STREAMING_CHUNK:Refactoring Table Render ---
-                function renderStandings() {
-                    const tbody = document.getElementById('standings-body');
-                    tbody.innerHTML = '';
+                card.className = "flex items-center justify-between gap-2 px-6 sm:px-8 py-4 border-b border-dashed border-ink/15";
 
-                    teamStats.forEach((t, index) => {
-                        const row = document.createElement('div');
-                        row.className = "grid grid-cols-[40px_1fr_60px_40px_40px_40px_40px_80px_60px] gap-2 items-center p-3 hover:bg-[#151515] transition-colors relative";
-
-                        let indicator = index < 8 ? `<div class="absolute left-0 top-2 bottom-2 w-1 bg-accent rounded-r-full"></div>` : '';
-
-                        row.innerHTML = `
-                    ${indicator}
-                    <div class="text-center font-bold text-gray-400">${index + 1}</div>
-                    <div class="flex items-center gap-3 overflow-hidden">
-                        ${getAvatarHtml(t, 'w-8 h-8', 'text-[10px]')}
-                        <span class="font-bold text-gray-200 truncate">${t.name}</span>
+                card.innerHTML = `
+                    <div class="flex-1 flex items-center justify-end gap-2.5 text-right min-w-0">
+                        <span class="font-serif font-semibold text-ink text-[15px] truncate hidden sm:block">${teamH.name}</span>
+                        <span class="font-serif font-semibold text-ink text-[15px] sm:hidden">${teamH.short}</span>
+                        ${getBadgeHtml(teamH)}
                     </div>
-                    <div class="text-center font-display font-bold text-white text-lg">${t.pts}</div>
-                    <div class="text-center text-xs text-gray-500">${t.pld}</div>
-                    <div class="text-center text-xs text-gray-500">${t.w}</div>
-                    <div class="text-center text-xs text-gray-500">${t.d}</div>
-                    <div class="text-center text-xs text-gray-500">${t.l}</div>
-                    <div class="text-center text-xs text-gray-400 font-mono">${t.gf}:${t.ga}</div>
-                    <div class="text-center text-xs font-bold ${t.gd > 0 ? 'text-accent' : t.gd < 0 ? 'text-red-400' : 'text-gray-500'}">
-                        ${t.gd > 0 ? '+' + t.gd : t.gd}
+
+                    <div class="flex items-center gap-1.5 px-2 shrink-0">
+                        <input type="number" min="0" max="99" placeholder="-"
+                            value="${match.hScore}"
+                            oninput="updateScore(${index}, 'home', this.value)"
+                            class="score-input w-10 h-10 bg-white border-2 border-ink/30 text-center text-lg font-mono font-bold text-ink transition-all placeholder:text-ink/20 outline-none">
+
+                        <span class="text-ink/30 font-bold text-xs font-mono">V</span>
+
+                        <input type="number" min="0" max="99" placeholder="-"
+                            value="${match.aScore}"
+                            oninput="updateScore(${index}, 'away', this.value)"
+                            class="score-input w-10 h-10 bg-white border-2 border-ink/30 text-center text-lg font-mono font-bold text-ink transition-all placeholder:text-ink/20 outline-none">
+                    </div>
+
+                    <div class="flex-1 flex items-center justify-start gap-2.5 text-left min-w-0">
+                        ${getBadgeHtml(teamA)}
+                        <span class="font-serif font-semibold text-ink text-[15px] truncate hidden sm:block">${teamA.name}</span>
+                        <span class="font-serif font-semibold text-ink text-[15px] sm:hidden">${teamA.short}</span>
                     </div>
                 `;
-                        tbody.appendChild(row);
-                    });
-                }
+                container.appendChild(card);
+            });
+        }
 
-                // --- STREAMING_CHUNK:Math & Standings Logic ---
-                function updateScore(matchIndex, teamSide, value) {
-                    let num = parseInt(value);
-                    const match = tournamentData[currentRound - 1][matchIndex];
+        function updateScore(matchIndex, teamSide, value) {
+            let num = parseInt(value);
+            const match = tournamentData[currentRound - 1][matchIndex];
 
-                    if (isNaN(num) || num < 0 || value === '') {
-                        if (teamSide === 'home') match.hScore = '';
-                        if (teamSide === 'away') match.aScore = '';
-                    } else {
-                        if (teamSide === 'home') match.hScore = num;
-                        if (teamSide === 'away') match.aScore = num;
+            if (isNaN(num) || num < 0 || value === '') {
+                if (teamSide === 'home') match.hScore = '';
+                if (teamSide === 'away') match.aScore = '';
+            } else {
+                if (teamSide === 'home') match.hScore = num;
+                if (teamSide === 'away') match.aScore = num;
+            }
+            calculateStats();
+        }
+
+        function clearCurrentJornada() {
+            tournamentData[currentRound - 1].forEach(m => { m.hScore = ''; m.aScore = ''; });
+            renderMatches();
+            calculateStats();
+        }
+
+        function calculateStats() {
+            teamStats = TEAMS.map(t => ({ ...t, pts: 0, pld: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0 }));
+
+            tournamentData.forEach(round => {
+                round.forEach(m => {
+                    if (m.hScore !== '' && m.aScore !== '') {
+                        let h = teamStats.find(t => t.id === m.home);
+                        let a = teamStats.find(t => t.id === m.away);
+                        let hGoals = parseInt(m.hScore);
+                        let aGoals = parseInt(m.aScore);
+
+                        h.pld++; a.pld++;
+                        h.gf += hGoals; h.ga += aGoals;
+                        a.gf += aGoals; a.ga += hGoals;
+
+                        if (hGoals > aGoals) { h.pts += 3; h.w++; a.l++; }
+                        else if (hGoals < aGoals) { a.pts += 3; a.w++; h.l++; }
+                        else { h.pts += 1; a.pts += 1; h.d++; a.d++; }
                     }
-                    calculateStats();
-                }
+                });
+            });
 
-                function clearCurrentJornada() {
-                    tournamentData[currentRound - 1].forEach(m => {
-                        m.hScore = '';
-                        m.aScore = '';
-                    });
-                    renderMatches();
-                    calculateStats();
-                }
+            teamStats.forEach(t => t.gd = t.gf - t.ga);
 
-                function calculateStats() {
-                    teamStats = TEAMS.map(t => ({
-                        ...t, pts: 0, pld: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0
-                    }));
+            teamStats.sort((a, b) => {
+                if (b.pts !== a.pts) return b.pts - a.pts;
+                if (b.gd !== a.gd) return b.gd - a.gd;
+                if (b.gf !== a.gf) return b.gf - a.gf;
+                return a.name.localeCompare(b.name);
+            });
 
-                    tournamentData.forEach(round => {
-                        round.forEach(m => {
-                            if (m.hScore !== '' && m.aScore !== '') {
-                                let h = teamStats.find(t => t.id === m.home);
-                                let a = teamStats.find(t => t.id === m.away);
-                                let hGoals = parseInt(m.hScore);
-                                let aGoals = parseInt(m.aScore);
+            teamStats.forEach((t, i) => t.rank = i + 1);
 
-                                h.pld++; a.pld++;
-                                h.gf += hGoals; h.ga += aGoals;
-                                a.gf += aGoals; a.ga += hGoals;
+            if (document.getElementById('tab-tabla').classList.contains('active')) renderStandings();
+            if (document.getElementById('tab-goleadores').classList.contains('active')) renderTopScorers();
+        }
 
-                                if (hGoals > aGoals) { h.pts += 3; h.w++; a.l++; }
-                                else if (hGoals < aGoals) { a.pts += 3; a.w++; h.l++; }
-                                else { h.pts += 1; a.pts += 1; h.d++; a.d++; }
-                            }
-                        });
-                    });
+        function renderStandings() {
+            const tbody = document.getElementById('standings-body');
+            tbody.innerHTML = '';
 
-                    teamStats.forEach(t => t.gd = t.gf - t.ga);
+            teamStats.forEach((t, index) => {
+                const tr = document.createElement('tr');
+                tr.className = `border-b border-ink/10 hover:bg-ink/[0.03] transition-colors ${index === 7 ? 'border-b-2 border-b-matchred' : ''}`;
 
-                    teamStats.sort((a, b) => {
-                        if (b.pts !== a.pts) return b.pts - a.pts;
-                        if (b.gd !== a.gd) return b.gd - a.gd;
-                        if (b.gf !== a.gf) return b.gf - a.gf;
-                        return a.name.localeCompare(b.name);
-                    });
-
-                    // Assign rank for liguilla tie-breakers
-                    teamStats.forEach((t, i) => t.rank = i + 1);
-
-                    if (document.getElementById('tab-tabla').classList.contains('active')) renderStandings();
-                    if (document.getElementById('tab-goleadores').classList.contains('active')) renderTopScorers();
-                    // We do NOT auto-update Liguilla, the user must click "Actualizar Llaves" to re-seed based on table.
-                }
-
-                function renderStandings() {
-                    const tbody = document.getElementById('standings-body');
-                    tbody.innerHTML = '';
-
-                    teamStats.forEach((t, index) => {
-                        const tr = document.createElement('tr');
-                        tr.className = "standings-row relative group";
-
-                        let indicatorHtml = '';
-                        if (index < 8) { // Only Top 8 Liguilla
-                            indicatorHtml = `<div class="absolute left-0 top-[10%] bottom-[10%] w-1 bg-accent rounded-r-full"></div>`;
-                        }
-
-                        tr.innerHTML = `
-                    ${indicatorHtml}
-                    <td class="py-3 px-4 w-12 text-center text-sm font-semibold text-gray-500 group-hover:text-gray-300">${index + 1}</td>
+                tr.innerHTML = `
+                    <td class="py-3 px-4 w-10 text-center text-sm font-mono font-bold ${index < 8 ? 'text-matchred' : 'text-ink/40'}">${index + 1}</td>
                     <td class="py-3 px-2">
                         <div class="flex items-center gap-3">
-                            ${getAvatarHtml(t, 'w-8 h-8', 'text-xs')}
-                            <span class="font-bold text-gray-200">${t.name}</span>
+                            ${getBadgeHtml(t, 'w-8 h-8', 'text-xs')}
+                            <span class="font-serif font-semibold text-ink text-[15px]">${t.name}</span>
                         </div>
                     </td>
-                    <td class="py-3 px-3 text-center font-display font-bold text-white text-base bg-white/[0.02]">${t.pts}</td>
-                    <td class="py-3 px-3 text-center text-sm font-medium text-gray-500">${t.pld}</td>
-                    <td class="py-3 px-3 text-center text-sm font-medium text-gray-500">${t.w}</td>
-                    <td class="py-3 px-3 text-center text-sm font-medium text-gray-500">${t.d}</td>
-                    <td class="py-3 px-3 text-center text-sm font-medium text-gray-500">${t.l}</td>
-                    <td class="py-3 px-3 text-center text-xs text-gray-400 font-medium">${t.gf}:${t.ga}</td>
-                    <td class="py-3 px-3 text-center text-sm font-bold ${t.gd > 0 ? 'text-accent' : t.gd < 0 ? 'text-red-400' : 'text-gray-500'}">
+                    <td class="py-3 px-3 text-center font-mono font-bold text-lg text-ink">${t.pts}</td>
+                    <td class="py-3 px-3 text-center text-sm text-ink/50">${t.pld}</td>
+                    <td class="py-3 px-3 text-center text-sm text-ink/50">${t.w}</td>
+                    <td class="py-3 px-3 text-center text-sm text-ink/50">${t.d}</td>
+                    <td class="py-3 px-3 text-center text-sm text-ink/50">${t.l}</td>
+                    <td class="py-3 px-3 text-center text-xs text-ink/50 font-mono">${t.gf}:${t.ga}</td>
+                    <td class="py-3 px-3 text-center text-sm font-mono font-bold ${t.gd > 0 ? 'text-signal' : t.gd < 0 ? 'text-matchred' : 'text-ink/40'}">
                         ${t.gd > 0 ? '+' + t.gd : t.gd}
                     </td>
                 `;
-                        tbody.appendChild(tr);
-                    });
+                tbody.appendChild(tr);
+            });
+        }
+
+        function generateLiguilla() {
+            const top8 = teamStats.slice(0, 8);
+            if (top8.length < 8) return;
+
+            liguilla.cuartos = [
+                { id: 'c1', t1: top8[0], t2: top8[7], ida1: '', ida2: '', vue1: '', vue2: '', winner: null },
+                { id: 'c2', t1: top8[3], t2: top8[4], ida1: '', ida2: '', vue1: '', vue2: '', winner: null },
+                { id: 'c3', t1: top8[1], t2: top8[6], ida1: '', ida2: '', vue1: '', vue2: '', winner: null },
+                { id: 'c4', t1: top8[2], t2: top8[5], ida1: '', ida2: '', vue1: '', vue2: '', winner: null }
+            ];
+            liguilla.semis = [];
+            liguilla.final = null;
+
+            renderLiguillaUI();
+        }
+
+        function calculateWinner(match, isFinal = false) {
+            if (!match || !match.t1 || !match.t2) return null;
+            if (match.ida1 === '' || match.ida2 === '' || match.vue1 === '' || match.vue2 === '') return null;
+
+            let agg1 = parseInt(match.ida1) + parseInt(match.vue1);
+            let agg2 = parseInt(match.ida2) + parseInt(match.vue2);
+
+            if (agg1 > agg2) return match.t1;
+            if (agg2 > agg1) return match.t2;
+
+            if (!isFinal) {
+                // Empate global: avanza el mejor posicionado en la tabla general
+                return match.t1.rank < match.t2.rank ? match.t1 : match.t2;
+            } else {
+                // Final: tiempos extra y penales — la tabla no importa aquí
+                if (match.pen1 !== '' && match.pen2 !== '' && parseInt(match.pen1) !== parseInt(match.pen2)) {
+                    return parseInt(match.pen1) > parseInt(match.pen2) ? match.t1 : match.t2;
                 }
+                return 'PENALTIES_NEEDED';
+            }
+        }
 
-                // --- STREAMING_CHUNK:Liguilla System ---
-                function generateLiguilla() {
-                    // Get Top 8
-                    const top8 = teamStats.slice(0, 8);
-                    if (top8.length < 8) return; // safety
+        function updateLiguillaInput(phase, matchId, field, value) {
+            let num = parseInt(value);
+            let match;
+            let isFinal = phase === 'final';
 
-                    // 1v8, 2v7, 3v6, 4v5
-                    liguilla.cuartos = [
-                        { id: 'c1', t1: top8[0], t2: top8[7], ida1: '', ida2: '', vue1: '', vue2: '', winner: null },
-                        { id: 'c2', t1: top8[3], t2: top8[4], ida1: '', ida2: '', vue1: '', vue2: '', winner: null },
-                        { id: 'c3', t1: top8[1], t2: top8[6], ida1: '', ida2: '', vue1: '', vue2: '', winner: null },
-                        { id: 'c4', t1: top8[2], t2: top8[5], ida1: '', ida2: '', vue1: '', vue2: '', winner: null }
+            if (phase === 'cuartos') match = liguilla.cuartos.find(m => m.id === matchId);
+            else if (phase === 'semis') match = liguilla.semis.find(m => m.id === matchId);
+            else if (phase === 'final') match = liguilla.final;
+
+            if (!match) return;
+
+            if (isNaN(num) || num < 0 || value === '') match[field] = '';
+            else match[field] = num;
+
+            if (isFinal && ['ida1', 'ida2', 'vue1', 'vue2'].includes(field)) {
+                let agg1 = (parseInt(match.ida1) || 0) + (parseInt(match.vue1) || 0);
+                let agg2 = (parseInt(match.ida2) || 0) + (parseInt(match.vue2) || 0);
+                if (agg1 !== agg2) { match.pen1 = ''; match.pen2 = ''; }
+            }
+
+            match.winner = calculateWinner(match, isFinal);
+
+            checkLiguillaProgress();
+            renderLiguillaUI();
+        }
+
+        function checkLiguillaProgress() {
+            let cuartosWinners = liguilla.cuartos.map(m => m.winner);
+            if (cuartosWinners.every(w => w !== null && w !== 'PENALTIES_NEEDED')) {
+                cuartosWinners.sort((a, b) => a.rank - b.rank);
+
+                if (liguilla.semis.length === 0 || liguilla.semis[0].t1.id !== cuartosWinners[0].id) {
+                    liguilla.semis = [
+                        { id: 's1', t1: cuartosWinners[0], t2: cuartosWinners[3], ida1: '', ida2: '', vue1: '', vue2: '', winner: null },
+                        { id: 's2', t1: cuartosWinners[1], t2: cuartosWinners[2], ida1: '', ida2: '', vue1: '', vue2: '', winner: null }
                     ];
-                    liguilla.semis = [];
                     liguilla.final = null;
-
-                    renderLiguillaUI();
                 }
+            } else {
+                liguilla.semis = []; liguilla.final = null;
+            }
 
-                function calculateWinner(match, isFinal = false) {
-                    if (!match || !match.t1 || !match.t2) return null;
-                    if (match.ida1 === '' || match.ida2 === '' || match.vue1 === '' || match.vue2 === '') return null;
-
-                    let agg1 = parseInt(match.ida1) + parseInt(match.vue1);
-                    let agg2 = parseInt(match.ida2) + parseInt(match.vue2);
-
-                    if (agg1 > agg2) return match.t1;
-                    if (agg2 > agg1) return match.t2;
-
-                    // Tie-breaker
-                    if (!isFinal) {
-                        // Table advantage
-                        return match.t1.rank < match.t2.rank ? match.t1 : match.t2;
-                    } else {
-                        // Penalties for Final
-                        if (match.pen1 !== '' && match.pen2 !== '') {
-                            return parseInt(match.pen1) > parseInt(match.pen2) ? match.t1 : match.t2;
-                        }
-                        return 'PENALTIES_NEEDED';
+            if (liguilla.semis.length === 2) {
+                let semisWinners = liguilla.semis.map(m => m.winner);
+                if (semisWinners.every(w => w !== null && w !== 'PENALTIES_NEEDED')) {
+                    if (!liguilla.final || liguilla.final.t1.id !== semisWinners[0].id) {
+                        liguilla.final = { id: 'f1', t1: semisWinners[0], t2: semisWinners[1], ida1: '', ida2: '', vue1: '', vue2: '', pen1: '', pen2: '', winner: null };
                     }
+                } else {
+                    liguilla.final = null;
                 }
+            }
+        }
 
-                function updateLiguillaInput(phase, matchId, field, value) {
-                    let num = parseInt(value);
-                    let match;
-                    let isFinal = phase === 'final';
+        function createMatchCard(match, phase) {
+            if (!match) return '';
+            const t1 = match.t1;
+            const t2 = match.t2;
+            const isFinal = phase === 'final';
 
-                    if (phase === 'cuartos') match = liguilla.cuartos.find(m => m.id === matchId);
-                    else if (phase === 'semis') match = liguilla.semis.find(m => m.id === matchId);
-                    else if (phase === 'final') match = liguilla.final;
+            let allFourFilled = match.ida1 !== '' && match.ida2 !== '' && match.vue1 !== '' && match.vue2 !== '';
+            let t1Global = (parseInt(match.ida1) || 0) + (parseInt(match.vue1) || 0);
+            let t2Global = (parseInt(match.ida2) || 0) + (parseInt(match.vue2) || 0);
+            let isTiedOnAggregate = allFourFilled && t1Global === t2Global;
 
-                    if (!match) return;
+            let t1Class = match.winner === t1 ? 'border-matchred bg-matchred/5' : 'border-ink/15 bg-white/40';
+            let t2Class = match.winner === t2 ? 'border-matchred bg-matchred/5' : 'border-ink/15 bg-white/40';
 
-                    if (isNaN(num) || num < 0 || value === '') match[field] = '';
-                    else match[field] = num;
+            if (match.winner === null || match.winner === 'PENALTIES_NEEDED') {
+                t1Class = 'border-ink/15 bg-white/40'; t2Class = 'border-ink/15 bg-white/40';
+            }
 
-                    // Check if final tie logic requires penalties to be cleared if scores change
-                    if (isFinal && ['ida1', 'ida2', 'vue1', 'vue2'].includes(field)) {
-                        let agg1 = (parseInt(match.ida1) || 0) + (parseInt(match.vue1) || 0);
-                        let agg2 = (parseInt(match.ida2) || 0) + (parseInt(match.vue2) || 0);
-                        if (agg1 !== agg2) {
-                            match.pen1 = ''; match.pen2 = '';
-                        }
-                    }
+            const getAdvantageTag = (team) => {
+                if (isFinal) return '';
+                if (isTiedOnAggregate && match.winner === team) return `<span class="ml-2 text-[9px] font-mono font-bold uppercase tracking-wide text-matchred border border-matchred px-1.5 py-0.5">Avanza por tabla</span>`;
+                return '';
+            }
 
-                    match.winner = calculateWinner(match, isFinal);
-
-                    // Auto-progress stages
-                    checkLiguillaProgress();
-                    renderLiguillaUI();
-                }
-
-                function checkLiguillaProgress() {
-                    // Check Cuartos -> Semis
-                    let cuartosWinners = liguilla.cuartos.map(m => m.winner);
-                    if (cuartosWinners.every(w => w !== null)) {
-                        // Re-seed semis based on original rank
-                        cuartosWinners.sort((a, b) => a.rank - b.rank); // 1 is best
-
-                        // Matchups: 1st vs 4th, 2nd vs 3rd of the remaining
-                        if (liguilla.semis.length === 0 || liguilla.semis[0].t1.id !== cuartosWinners[0].id) {
-                            liguilla.semis = [
-                                { id: 's1', t1: cuartosWinners[0], t2: cuartosWinners[3], ida1: '', ida2: '', vue1: '', vue2: '', winner: null },
-                                { id: 's2', t1: cuartosWinners[1], t2: cuartosWinners[2], ida1: '', ida2: '', vue1: '', vue2: '', winner: null }
-                            ];
-                            liguilla.final = null;
-                        }
-                    } else {
-                        liguilla.semis = []; liguilla.final = null;
-                    }
-
-                    // Check Semis -> Final
-                    if (liguilla.semis.length === 2) {
-                        let semisWinners = liguilla.semis.map(m => m.winner);
-                        if (semisWinners.every(w => w !== null)) {
-                            if (!liguilla.final || liguilla.final.t1.id !== semisWinners[0].id) {
-                                liguilla.final = { id: 'f1', t1: semisWinners[0], t2: semisWinners[1], ida1: '', ida2: '', vue1: '', vue2: '', pen1: '', pen2: '', winner: null };
-                            }
-                        } else {
-                            liguilla.final = null;
-                        }
-                    }
-                }
-
-                function createMatchCard(match, phase) {
-                    if (!match) return '';
-                    const t1 = match.t1;
-                    const t2 = match.t2;
-                    const isFinal = phase === 'final';
-
-                    let t1Global = (parseInt(match.ida1) || 0) + (parseInt(match.vue1) || 0);
-                    let t2Global = (parseInt(match.ida2) || 0) + (parseInt(match.vue2) || 0);
-                    let isTied = t1Global === t2Global && (match.ida1 !== '' && match.vue1 !== '');
-
-                    // Visual indicators for advancing team
-                    let t1Class = match.winner === t1 ? 'border-accent bg-[#00FFAA]/5 shadow-[0_0_15px_rgba(0,255,170,0.1)]' : 'border-borderLine bg-[#0a0a0a] opacity-60 hover:opacity-100';
-                    let t2Class = match.winner === t2 ? 'border-accent bg-[#00FFAA]/5 shadow-[0_0_15px_rgba(0,255,170,0.1)]' : 'border-borderLine bg-[#0a0a0a] opacity-60 hover:opacity-100';
-
-                    if (match.winner === null && match.winner !== 'PENALTIES_NEEDED') {
-                        t1Class = 'border-borderLine bg-[#0a0a0a]';
-                        t2Class = 'border-borderLine bg-[#0a0a0a]';
-                    }
-
-                    // Table advantage indicator (Gold crown icon)
-                    const getAdvantageIcon = (team) => {
-                        if (isFinal) return '';
-                        if (isTied && match.winner === team) return `<i class="ph-fill ph-crown text-yellow-500 text-lg ml-2" title="Avanza por mejor posición en la tabla"></i>`;
-                        return '';
-                    }
-
-                    let penaltiesHtml = '';
-                    if (isFinal && match.winner === 'PENALTIES_NEEDED' || (isFinal && isTied && match.pen1 !== '')) {
-                        penaltiesHtml = `
-                    <div class="mt-4 pt-4 border-t border-borderLine border-dashed flex flex-col items-center">
-                        <span class="text-xs font-bold text-accent uppercase tracking-widest mb-2">Tiros Penales</span>
+            // La final SIEMPRE muestra penales cuando el global está empatado con los 4 marcadores capturados,
+            // sin depender de otros indicadores — esto corrige el bug donde no aparecían.
+            let showPenalties = isFinal && isTiedOnAggregate;
+            let penaltiesHtml = '';
+            if (showPenalties) {
+                penaltiesHtml = `
+                    <div class="mt-3 pt-3 border-t-2 border-dashed border-ink/20 flex flex-col items-center">
+                        <span class="text-[10px] font-mono font-bold text-matchred uppercase tracking-[0.2em] mb-2">Global empatado · Tiempos extra sin goles · Penales</span>
                         <div class="flex items-center gap-3">
-                            <input type="number" value="${match.pen1}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'pen1', this.value)" class="score-input w-12 h-10 bg-[#050505] border border-borderLine text-center text-lg font-bold text-white rounded-lg">
-                            <span class="text-gray-600 font-bold">:</span>
-                            <input type="number" value="${match.pen2}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'pen2', this.value)" class="score-input w-12 h-10 bg-[#050505] border border-borderLine text-center text-lg font-bold text-white rounded-lg">
+                            <input type="number" value="${match.pen1}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'pen1', this.value)" class="score-input w-11 h-9 bg-white border-2 border-ink/30 text-center font-mono font-bold text-ink">
+                            <span class="text-ink/40 font-bold font-mono">P</span>
+                            <input type="number" value="${match.pen2}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'pen2', this.value)" class="score-input w-11 h-9 bg-white border-2 border-ink/30 text-center font-mono font-bold text-ink">
                         </div>
                     </div>
                 `;
-                    }
+            }
 
-                    return `
-                <div class="flex flex-col gap-2">
-                    <!-- Team 1 Row -->
-                    <div class="flex items-center justify-between p-3 rounded-xl border ${t1Class} transition-all">
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs font-bold text-gray-500 w-4">${t1.rank}</span>
-                            ${getAvatarHtml(t1)}
-                            <span class="font-bold text-gray-200">${t1.name} ${getAdvantageIcon(t1)}</span>
+            return `
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between p-2.5 border-2 ${t1Class} transition-all">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="text-[11px] font-mono font-bold text-ink/40 w-4 shrink-0">${t1.rank}</span>
+                            ${getBadgeHtml(t1, 'w-8 h-8', 'text-xs')}
+                            <span class="font-serif font-semibold text-ink text-sm truncate flex items-center">${t1.name} ${getAdvantageTag(t1)}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <input type="number" placeholder="Ida" value="${match.ida1}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'ida1', this.value)" class="score-input w-10 h-10 bg-[#050505] border border-borderLine text-center font-bold text-white rounded-lg text-sm">
-                            <input type="number" placeholder="Vue" value="${match.vue1}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'vue1', this.value)" class="score-input w-10 h-10 bg-[#050505] border border-borderLine text-center font-bold text-white rounded-lg text-sm">
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <input type="number" placeholder="IDA" value="${match.ida1}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'ida1', this.value)" class="score-input w-9 h-9 bg-white border-2 border-ink/30 text-center font-mono font-bold text-ink text-xs">
+                            <input type="number" placeholder="VTA" value="${match.vue1}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'vue1', this.value)" class="score-input w-9 h-9 bg-white border-2 border-ink/30 text-center font-mono font-bold text-ink text-xs">
                         </div>
                     </div>
-                    
-                    <!-- Team 2 Row -->
-                    <div class="flex items-center justify-between p-3 rounded-xl border ${t2Class} transition-all">
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs font-bold text-gray-500 w-4">${t2.rank}</span>
-                            ${getAvatarHtml(t2)}
-                            <span class="font-bold text-gray-200">${t2.name} ${getAdvantageIcon(t2)}</span>
+
+                    <div class="flex items-center justify-between p-2.5 border-2 ${t2Class} transition-all">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="text-[11px] font-mono font-bold text-ink/40 w-4 shrink-0">${t2.rank}</span>
+                            ${getBadgeHtml(t2, 'w-8 h-8', 'text-xs')}
+                            <span class="font-serif font-semibold text-ink text-sm truncate flex items-center">${t2.name} ${getAdvantageTag(t2)}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <input type="number" placeholder="Ida" value="${match.ida2}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'ida2', this.value)" class="score-input w-10 h-10 bg-[#050505] border border-borderLine text-center font-bold text-white rounded-lg text-sm">
-                            <input type="number" placeholder="Vue" value="${match.vue2}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'vue2', this.value)" class="score-input w-10 h-10 bg-[#050505] border border-borderLine text-center font-bold text-white rounded-lg text-sm">
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <input type="number" placeholder="IDA" value="${match.ida2}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'ida2', this.value)" class="score-input w-9 h-9 bg-white border-2 border-ink/30 text-center font-mono font-bold text-ink text-xs">
+                            <input type="number" placeholder="VTA" value="${match.vue2}" oninput="updateLiguillaInput('${phase}', '${match.id}', 'vue2', this.value)" class="score-input w-9 h-9 bg-white border-2 border-ink/30 text-center font-mono font-bold text-ink text-xs">
                         </div>
                     </div>
                     ${penaltiesHtml}
                 </div>
             `;
-                }
+        }
 
-                function renderLiguillaUI() {
-                    const cuartosEl = document.getElementById('liguilla-cuartos');
-                    const semisEl = document.getElementById('liguilla-semis');
-                    const finalEl = document.getElementById('liguilla-final');
+        function renderLiguillaUI() {
+            const cuartosEl = document.getElementById('liguilla-cuartos');
+            const semisEl = document.getElementById('liguilla-semis');
+            const finalEl = document.getElementById('liguilla-final');
 
-                    cuartosEl.innerHTML = liguilla.cuartos.map(m => `<div class="bg-[#050505] border border-borderLine rounded-2xl p-4 shadow-inner">${createMatchCard(m, 'cuartos')}</div>`).join('');
+            cuartosEl.innerHTML = liguilla.cuartos.map(m => `<div class="bg-paper paper-grain border-2 border-paper p-4">${createMatchCard(m, 'cuartos')}</div>`).join('');
 
-                    if (liguilla.semis.length > 0) {
-                        semisEl.innerHTML = liguilla.semis.map(m => `<div class="bg-[#050505] border border-borderLine rounded-2xl p-4 shadow-inner">${createMatchCard(m, 'semis')}</div>`).join('');
-                    } else {
-                        semisEl.innerHTML = `<div class="col-span-1 lg:col-span-2 text-center text-gray-600 py-8 text-sm font-medium">Completa los Cuartos de Final para definir los cruces.</div>`;
-                    }
+            if (liguilla.semis.length > 0) {
+                semisEl.innerHTML = liguilla.semis.map(m => `<div class="bg-paper paper-grain border-2 border-paper p-4">${createMatchCard(m, 'semis')}</div>`).join('');
+            } else {
+                semisEl.innerHTML = `<div class="col-span-1 lg:col-span-2 text-center text-paper/40 py-10 text-xs font-mono uppercase tracking-wide border-2 border-dashed border-paper/20">Completa los Cuartos de Final para definir los cruces</div>`;
+            }
 
-                    if (liguilla.final) {
-                        finalEl.innerHTML = `<div class="bg-background border border-borderLine rounded-2xl p-6 shadow-2xl scale-105 transform">${createMatchCard(liguilla.final, 'final')}</div>`;
+            if (liguilla.final) {
+                finalEl.innerHTML = `<div class="border-2 border-ink/20 p-5">${createMatchCard(liguilla.final, 'final')}</div>`;
 
-                        // Show winner celebration if final is decided
-                        if (liguilla.final.winner && liguilla.final.winner !== 'PENALTIES_NEEDED') {
-                            finalEl.innerHTML += `
-                        <div class="mt-8 text-center animate-bounce">
-                            <div class="inline-flex items-center justify-center gap-3 bg-accent text-black px-6 py-3 rounded-full font-display font-black text-lg shadow-[0_0_30px_#00FFAA]">
-                                <i class="ph-fill ph-trophy text-2xl"></i> ¡${liguilla.final.winner.name} CAMPEÓN!
+                if (liguilla.final.winner && liguilla.final.winner !== 'PENALTIES_NEEDED') {
+                    finalEl.innerHTML += `
+                        <div class="mt-7 text-center">
+                            <div class="inline-flex items-center justify-center gap-3 bg-matchred text-paper px-6 py-3 font-display text-xl tracking-wide">
+                                <i class="ph-fill ph-trophy text-2xl"></i> ${liguilla.final.winner.name} — CAMPEÓN
                             </div>
                         </div>
                     `;
-                        }
-
-                    } else {
-                        finalEl.innerHTML = `<div class="text-center text-gray-600 py-8 text-sm font-medium">Completa las Semifinales para conocer a los finalistas.</div>`;
-                    }
                 }
+            } else {
+                finalEl.innerHTML = `<div class="text-center text-ink/40 py-10 text-xs font-mono uppercase tracking-wide border-2 border-dashed border-ink/20">Completa las Semifinales para conocer a los finalistas</div>`;
+            }
+        }
 
-                // --- STREAMING_CHUNK:Scorers Logic ---
-                function renderTopScorers() {
-                    const list = document.getElementById('goleadores-list');
-                    list.innerHTML = '';
+        function renderTopScorers() {
+            const list = document.getElementById('goleadores-list');
+            list.innerHTML = '';
 
-                    let scorers = [];
-                    teamStats.forEach(t => {
-                        if (t.gf > 0) {
-                            let topPlayerGoals = Math.ceil(t.gf * 0.55);
-                            let secPlayerGoals = Math.floor(t.gf * 0.25);
+            let scorers = [];
+            teamStats.forEach(t => {
+                if (t.gf > 0) {
+                    let topPlayerGoals = Math.ceil(t.gf * 0.55);
+                    let secPlayerGoals = Math.floor(t.gf * 0.25);
+                    scorers.push({ name: `Atacante Principal`, team: t, goals: topPlayerGoals });
+                    if (secPlayerGoals > 0) scorers.push({ name: `Medio Ofensivo`, team: t, goals: secPlayerGoals });
+                }
+            });
 
-                            scorers.push({ name: `Atacante Principal`, team: t, goals: topPlayerGoals });
-                            if (secPlayerGoals > 0) {
-                                scorers.push({ name: `Medio Ofensivo`, team: t, goals: secPlayerGoals });
-                            }
-                        }
-                    });
+            scorers.sort((a, b) => b.goals - a.goals);
 
-                    scorers.sort((a, b) => b.goals - a.goals);
+            if (scorers.length === 0) {
+                list.innerHTML = `<div class="text-center py-14 text-ink/40 font-mono uppercase tracking-wide text-xs">Sin goles registrados — ingresa resultados en Jornada</div>`;
+                return;
+            }
 
-                    if (scorers.length === 0) {
-                        list.innerHTML = `<div class="text-center py-12 text-gray-600 font-medium bg-surface rounded-2xl border border-borderLine">No hay goles registrados. Ingresa resultados en Inicio.</div>`;
-                        return;
-                    }
+            scorers.slice(0, 10).forEach((s, i) => {
+                const item = document.createElement('div');
+                item.className = "flex items-center px-6 sm:px-8 py-4 border-b border-dashed border-ink/15 last:border-0 hover:bg-ink/[0.02] transition-colors";
 
-                    scorers.slice(0, 10).forEach((s, i) => {
-                        const item = document.createElement('div');
-                        item.className = "flex items-center p-4 rounded-2xl hover:bg-[#1a1a1a] border border-transparent hover:border-borderLine transition-all group";
+                let rankColor = i === 0 ? "text-matchred" : "text-ink/30";
 
-                        let rankColor = i === 0 ? "text-accent" : i < 3 ? "text-gray-200" : "text-gray-600";
-
-                        item.innerHTML = `
-                    <div class="w-12 font-display font-black ${rankColor} text-xl text-center">
-                        ${i + 1}
-                    </div>
-                    <div class="flex-shrink-0 mx-4">
-                        ${getAvatarHtml(s.team, 'w-12 h-12', 'text-lg')}
-                    </div>
-                    <div class="flex-1">
-                        <div class="font-bold text-gray-200 text-lg leading-tight group-hover:text-white transition-colors">${s.name}</div>
-                        <div class="text-sm text-gray-500 font-medium mt-1 flex items-center gap-1">
-                            <div class="w-2 h-2 rounded-full" style="background:${s.team.colors[0]}"></div>
-                            ${s.team.name}
-                        </div>
+                item.innerHTML = `
+                    <div class="w-10 font-display ${rankColor} text-xl text-center">${i + 1}</div>
+                    <div class="flex-shrink-0 mx-3">${getBadgeHtml(s.team, 'w-10 h-10', 'text-sm')}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-serif font-semibold text-ink text-[15px] truncate">${s.name}</div>
+                        <div class="text-xs text-ink/50 mt-0.5 font-mono">${s.team.name}</div>
                     </div>
                     <div class="text-right pl-4">
-                        <div class="font-display text-3xl font-black text-white bg-[#050505] px-4 py-2 rounded-xl border border-borderLine">${s.goals}</div>
+                        <div class="font-mono text-2xl font-bold text-ink">${s.goals}</div>
                     </div>
                 `;
-                        list.appendChild(item);
-                    });
-                }
+                list.appendChild(item);
+            });
+        }
 
-                // --- STREAMING_CHUNK:Initialization ---
-                window.onload = function () {
-                    generateSchedule();
-                    calculateStats();
-                    renderMatchdaySelector();
-                    renderMatches();
-                };
-
+        window.onload = function () {
+            generateSchedule();
+            calculateStats();
+            renderMatchdaySelector();
+            renderMatches();
+        };
     </script>
 </body>
 
