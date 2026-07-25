@@ -42,7 +42,32 @@
     <canvas id="appCanvas"></canvas>
     <input id="scoreInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" />
 
-    <script>
+    <script type="module">
+        import { ligaMX } from './Players.js';
+
+        // Vincula cada equipo con su carpeta de plantilla y su escudo real
+        const TEAM_LINKS = {
+            'América': { key: 'clubAmerica', icon: 'ClubAmerica.png' },
+            'Chivas': { key: 'chivas', icon: 'Chivas.png' },
+            'Cruz Azul': { key: 'cruzAzul', icon: 'CruzAzul.png' },
+            'Pumas': { key: 'pumas', icon: 'Pumas.png' },
+            'Tigres': { key: 'tigres', icon: 'Tigres.png' },
+            'Monterrey': { key: 'monterrey', icon: 'Monterrey.png' },
+            'Toluca': { key: 'toluca', icon: 'Toluca.png' },
+            'Pachuca': { key: 'pachuca', icon: 'Pachuca.png' },
+            'León': { key: 'leon', icon: 'Leon.png' },
+            'Santos': { key: 'santosLaguna', icon: 'SantosLaguna.png' },
+            'Tijuana': { key: 'tijuana', icon: 'Tijuana.png' },
+            'Atlas': { key: 'atlas', icon: 'Atlas.png' },
+            'Puebla': { key: 'puebla', icon: 'Puebla.png' },
+            'Querétaro': { key: 'queretaro', icon: 'Queretaro.png' },
+            'Necaxa': { key: 'necaxa', icon: 'Necaxa.png' },
+            'FC Juárez': { key: 'fcJuarez', icon: 'Juarez.png' },
+            'San Luis': { key: 'atleticoSanLuis', icon: 'Sanluis.png' }
+            // Mazatlán no tiene plantilla/escudo cargados en Players.js
+        };
+        const ICON_DIR = './LigaMXTeamIcons/';
+
         const TEAMS = [
             { id: 1, name: 'América', short: 'AME', c1: '#F5E97D', c2: '#0F2148' },
             { id: 2, name: 'Chivas', short: 'GUA', c1: '#E62129', c2: '#002E63' },
@@ -69,6 +94,30 @@
         const TOTAL_ROUNDS = 17;
         let liguilla = { cuartos: [], semis: [], final: null };
         let awards = { scorers: [], assists: [], keepers: [], xi: null };
+
+        function loadTeamAssets() {
+            TEAMS.forEach(t => {
+                let link = TEAM_LINKS[t.name];
+                if (!link) return;
+                t.rosterKey = link.key;
+                let img = new Image();
+                img.src = ICON_DIR + link.icon;
+                t.logoImg = img;
+            });
+        }
+
+        // Devuelve el primer jugador disponible de una categoría, priorizando
+        // coincidencia de posición y evitando repetir el mismo jugador dos veces.
+        function pickPlayer(team, category, posHint, usedKeys) {
+            if (!team.rosterKey || !ligaMX[team.rosterKey]) return null;
+            let arr = ligaMX[team.rosterKey][category];
+            if (!arr || arr.length === 0) return null;
+            let candidate = null;
+            if (posHint) candidate = arr.find(p => p.pos === posHint && !usedKeys.has(team.short + '_' + p.name));
+            if (!candidate) candidate = arr.find(p => !usedKeys.has(team.short + '_' + p.name));
+            if (candidate) usedKeys.add(team.short + '_' + candidate.name);
+            return candidate;
+        }
 
         let appState = 'intro';
         let currentTab = 'jornada';
@@ -136,6 +185,18 @@
                 drawRect(x - r, y - r, r * 2, r * 2, '#2a2f38', 3);
                 return;
             }
+            if (team.logoImg && team.logoImg.complete && team.logoImg.naturalWidth > 0) {
+                ctx.save();
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(x - r, y - r, r * 2, r * 2, 3);
+                else ctx.rect(x - r, y - r, r * 2, r * 2);
+                ctx.clip();
+                drawRect(x - r, y - r, r * 2, r * 2, '#0e1219', 0);
+                ctx.drawImage(team.logoImg, x - r, y - r, r * 2, r * 2);
+                ctx.restore();
+                strokeRect(x - r, y - r, r * 2, r * 2, 'rgba(255,255,255,0.1)', 1, 3);
+                return;
+            }
             let grd = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
             grd.addColorStop(0, team.c1);
             grd.addColorStop(1, team.c2);
@@ -184,45 +245,70 @@
             computeAwards();
         }
 
-        // --- Premios / Once Ideal --------------------------------------------------
-        const ROLE_POOL = {
-            gk: ['Portero'],
-            def: ['Lateral Derecho', 'Central', 'Central', 'Lateral Izquierdo'],
-            mid: ['Mediocampista de Contención', 'Mediocampista Mixto', 'Mediocampista Ofensivo'],
-            fwd: ['Extremo Derecho', 'Delantero Centro', 'Extremo Izquierdo']
-        };
+        // --- Premios / Once Ideal (con nombres reales de Players.js) ---------------
+        const XI_SLOTS = [
+            { label: 'Lateral Derecho', cat: 'Defensores', pos: 'LD' },
+            { label: 'Central', cat: 'Defensores', pos: 'DC' },
+            { label: 'Central', cat: 'Defensores', pos: 'DC' },
+            { label: 'Lateral Izquierdo', cat: 'Defensores', pos: 'LI' },
+            { label: 'Mediocampista de Contención', cat: 'Mediocampistas', pos: 'MCD' },
+            { label: 'Mediocampista', cat: 'Mediocampistas', pos: 'MC' },
+            { label: 'Mediocampista Ofensivo', cat: 'Mediocampistas', pos: 'MCO' },
+            { label: 'Extremo Derecho', cat: 'Delanteros', pos: 'ED' },
+            { label: 'Delantero Centro', cat: 'Delanteros', pos: 'DC' },
+            { label: 'Extremo Izquierdo', cat: 'Delanteros', pos: 'EI' }
+        ];
 
         function computeAwards() {
-            let played = teamStats.filter(t => t.pld > 0);
+            let played = teamStats.filter(t => t.pld > 0 && t.rosterKey);
             if (played.length === 0) { awards = { scorers: [], assists: [], keepers: [], xi: null }; return; }
+            let usedKeys = new Set();
 
-            // Goleo (determinístico a partir de goles a favor del equipo)
-            let scorers = [];
-            played.forEach(t => {
-                scorers.push({ role: 'Delantero Centro', team: t, g: Math.ceil(t.gf * 0.5) });
-                let secondary = Math.floor(t.gf * 0.22);
-                if (secondary > 0) scorers.push({ role: 'Mediocampista Ofensivo', team: t, g: secondary });
-            });
-            scorers.sort((a, b) => b.g - a.g);
+            // Goleo: el delantero titular de cada equipo recibe los goles del equipo
+            let scorers = played.map(t => {
+                let p = pickPlayer(t, 'Delanteros', 'DC', usedKeys);
+                return { player: p ? p.name : 'Delantero', role: p && p.pos ? p.pos : 'DC', team: t, g: Math.ceil(t.gf * 0.55) };
+            }).filter(s => s.g > 0).sort((a, b) => b.g - a.g);
 
-            // Asistencias, derivadas de los goles del equipo con otro factor
-            let assists = played.map(t => ({ role: 'Mediocampista Mixto', team: t, a: Math.floor(t.gf * 0.4) }))
-                .filter(x => x.a > 0)
-                .sort((a, b) => b.a - a.a);
+            // Asistencias: el mediocampista ofensivo titular
+            let assists = played.map(t => {
+                let p = pickPlayer(t, 'Mediocampistas', 'MCO', usedKeys);
+                return { player: p ? p.name : 'Mediocampista', role: p && p.pos ? p.pos : 'MCO', team: t, a: Math.floor(t.gf * 0.35) };
+            }).filter(x => x.a > 0).sort((a, b) => b.a - a.a);
 
-            // Vallas menos vencidas
-            let keepers = played.map(t => ({ team: t, ga: t.ga, pld: t.pld }))
-                .sort((a, b) => (a.ga / a.pld) - (b.ga / b.pld));
+            // Vallas menos vencidas: el portero titular de cada equipo
+            let keepers = played.map(t => {
+                let p = pickPlayer(t, 'Arqueros', null, new Set()); // el portero titular puede repetirse en su propio equipo
+                return { player: p ? p.name : 'Portero', team: t, ga: t.ga, pld: t.pld };
+            }).sort((a, b) => (a.ga / a.pld) - (b.ga / b.pld));
 
-            // Once Ideal: mejores 8 equipos surten jugadores por rendimiento (pts+gd)
+            // Once ideal: equipos mejor ubicados aportan un jugador real por posición
             let pool = [...played].sort((a, b) => (b.pts + b.gd) - (a.pts + a.gd));
-            let xi = { gk: null, def: [], mid: [], fwd: [] };
+            let xiUsed = new Set();
             let idx = 0;
-            const take = () => pool[idx++ % pool.length];
-            xi.gk = { role: ROLE_POOL.gk[0], team: take() };
-            ROLE_POOL.def.forEach(role => xi.def.push({ role, team: take() }));
-            ROLE_POOL.mid.forEach(role => xi.mid.push({ role, team: take() }));
-            ROLE_POOL.fwd.forEach(role => xi.fwd.push({ role, team: take() }));
+            function nextFor(cat, pos) {
+                for (let tries = 0; tries < pool.length; tries++) {
+                    let team = pool[idx % pool.length];
+                    idx++;
+                    let p = pickPlayer(team, cat, pos, xiUsed);
+                    if (p) return { role: pos, label: pos, team, player: p.name, dorsal: p.dorsal };
+                }
+                return null;
+            }
+            let gkTeam = pool[0];
+            let gkPlayer = pickPlayer(gkTeam, 'Arqueros', null, xiUsed);
+            let xi = {
+                gk: { label: 'Portero', team: gkTeam, player: gkPlayer ? gkPlayer.name : 'Portero', dorsal: gkPlayer ? gkPlayer.dorsal : null },
+                def: [], mid: [], fwd: []
+            };
+            XI_SLOTS.forEach(slot => {
+                let pick = nextFor(slot.cat, slot.pos);
+                if (!pick) return;
+                pick.label = slot.label;
+                if (slot.cat === 'Defensores') xi.def.push(pick);
+                else if (slot.cat === 'Mediocampistas') xi.mid.push(pick);
+                else xi.fwd.push(pick);
+            });
 
             awards = { scorers, assists, keepers, xi };
         }
@@ -643,7 +729,7 @@
             strokeRect(x, y, w, h, THEME.border, 1, 4);
             drawText(label, x + 18, y + 22, THEME.textMuted, 10, 'left', '700');
             if (team) drawBadge(team, x + w - 26, y + 22, 11);
-            drawText(value, x + 18, y + h - 34, THEME.text, 22, 'left', '700', THEME.fontDisplay);
+            drawText(value, x + 18, y + h - 34, THEME.text, 17, 'left', '700', THEME.fontDisplay);
             drawText(sub, x + 18, y + h - 14, THEME.textMuted, 11, 'left', '500');
         }
 
@@ -677,9 +763,9 @@
             let topKeeper = awards.keepers[0];
 
             let cards = [
-                { label: 'BOTA DE ORO', value: `${topScorer.g} goles`, sub: `${topScorer.role} · ${topScorer.team.name}`, team: topScorer.team },
-                { label: 'MEJOR ASISTENTE', value: topAssist ? `${topAssist.a} asistencias` : '—', sub: topAssist ? `${topAssist.role} · ${topAssist.team.name}` : 'Sin datos aún', team: topAssist ? topAssist.team : null },
-                { label: 'GUANTE DORADO', value: `${topKeeper.ga} recibidos`, sub: `Portero · ${topKeeper.team.name} (${topKeeper.pld} PJ)`, team: topKeeper.team }
+                { label: 'BOTA DE ORO', value: topScorer.player, sub: `${topScorer.g} goles · ${topScorer.team.name}`, team: topScorer.team },
+                { label: 'MEJOR ASISTENTE', value: topAssist ? topAssist.player : '—', sub: topAssist ? `${topAssist.a} asistencias · ${topAssist.team.name}` : 'Sin datos aún', team: topAssist ? topAssist.team : null },
+                { label: 'GUANTE DORADO', value: topKeeper.player, sub: `${topKeeper.ga} recibidos · ${topKeeper.team.name} (${topKeeper.pld} PJ)`, team: topKeeper.team }
             ];
 
             cards.forEach((c, i) => {
@@ -726,8 +812,9 @@
                 list.forEach((p, i) => {
                     let px = pitchX + pitchW * ((i + 1) / (n + 1));
                     drawBadge(p.team, px, rowY, 15);
-                    drawText(p.team.short, px, rowY + 26, THEME.text, 10, 'center', '700');
-                    drawText(p.role, px, rowY + 40, THEME.textMuted, 8.5, 'center', '500');
+                    if (p.dorsal) drawText(String(p.dorsal), px, rowY, '#fff', 9, 'center', '700');
+                    drawText(p.player, px, rowY + 26, THEME.text, 10.5, 'center', '700');
+                    drawText(p.label, px, rowY + 39, THEME.textMuted, 8, 'center', '500');
                 });
             }
 
@@ -897,6 +984,7 @@
 
         window.onload = function () {
             resize();
+            loadTeamAssets();
             generateSchedule();
             calculateStats();
             requestAnimationFrame(render);
