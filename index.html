@@ -150,6 +150,15 @@
         let appState = 'intro';
         let currentTab = 'jornada';
         let currentRound = 1;
+        const TAB_ORDER = ['jornada', 'tabla', 'liguilla', 'plantel'];
+        let tabAnim = null;
+
+        function renderTabByName(tabId, startY) {
+            if (tabId === 'jornada') renderJornada(startY);
+            else if (tabId === 'tabla') renderTabla(startY);
+            else if (tabId === 'liguilla') renderLiguilla(startY);
+            else if (tabId === 'plantel') renderPlantel(startY);
+        }
 
         const canvas = document.getElementById('appCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
@@ -457,6 +466,11 @@
                 drawText(tab.label, tx + (tabW / 2), tabY + 20, isActive ? THEME.accent : (isHover ? THEME.text : THEME.textMuted), 11, 'center', '700');
 
                 addHitbox(tx, tabY, tabW, 40, `tab_${tab.id}`, () => {
+                    if (tab.id === currentTab) return;
+                    let fromIdx = TAB_ORDER.indexOf(currentTab);
+                    let toIdx = TAB_ORDER.indexOf(tab.id);
+                    let dir = toIdx > fromIdx ? 1 : -1;
+                    tabAnim = { from: currentTab, to: tab.id, start: globalTime * 1000, duration: 260, dir };
                     currentTab = tab.id;
                     scrollY = 0; scrollX = 0;
                     if (currentTab === 'liguilla' && liguilla.cuartos.length === 0) generateLiguilla();
@@ -464,6 +478,43 @@
             });
 
             return h;
+        }
+
+        // Aproximación de una variable Poisson (número de goles esperados de un equipo)
+        function poissonSample(lambda) {
+            let L = Math.exp(-lambda), k = 0, p = 1;
+            do { k++; p *= Math.random(); } while (p > L && k < 10);
+            return k - 1;
+        }
+
+        function quickSimulateMatch(home, away) {
+            let atkH = teamRating(home, 'atk'), defH = teamRating(home, 'def');
+            let atkA = teamRating(away, 'atk'), defA = teamRating(away, 'def');
+            let lambdaH = Math.max(0.15, (atkH / defA) * 1.35);
+            let lambdaA = Math.max(0.1, (atkA / defH) * 1.05);
+            return { h: poissonSample(lambdaH), a: poissonSample(lambdaA) };
+        }
+
+        function simulateWholeSeason() {
+            let pending = 0;
+            tournamentData.forEach(round => round.forEach(m => { if (m.hScore === '' || m.aScore === '') pending++; }));
+            if (pending === 0) {
+                if (!confirm('Todos los partidos ya tienen resultado. ¿Quieres volver a simular TODA la temporada desde cero?')) return;
+            } else {
+                if (!confirm(`Se van a simular ${pending} partido(s) pendientes de forma instantánea (sin minuto a minuto). ¿Continuar?`)) return;
+            }
+            tournamentData.forEach(round => {
+                round.forEach(m => {
+                    if (m.hScore === '' || m.aScore === '') {
+                        let tH = TEAMS.find(t => t.id === m.home);
+                        let tA = TEAMS.find(t => t.id === m.away);
+                        let res = quickSimulateMatch(tH, tA);
+                        m.hScore = res.h; m.aScore = res.a;
+                        m._sim = null; // sin historial minuto a minuto disponible
+                    }
+                });
+            });
+            calculateStats();
         }
 
         function renderJornada(startY) {
@@ -500,7 +551,14 @@
             drawRect(padX, y, contentW, 54, THEME.card, 4);
             strokeRect(padX, y, contentW, 54, THEME.border, 1, 4);
             drawText(`JORNADA ${String(currentRound).padStart(2, '0')}`, padX + 22, y + 27, THEME.text, 17, 'left', '700');
-            drawText("Toca ▶ para simular un partido minuto a minuto", padX + contentW - 18, y + 27, THEME.textMuted, 10.5, 'right', '500');
+
+            let simAllW = vw < 600 ? 150 : 190;
+            let simAllX = padX + contentW - simAllW - 14;
+            let simAllHover = hoveredId === 'sim_all_season';
+            drawRect(simAllX, y + 12, simAllW, 30, simAllHover ? THEME.accent : THEME.accentSoft, 3);
+            strokeRect(simAllX, y + 12, simAllW, 30, THEME.accent, 1, 3);
+            drawText('⚡ SIMULAR TEMPORADA', simAllX + simAllW / 2, y + 27, simAllHover ? '#0a0d12' : THEME.accent, 10, 'center', '700');
+            addHitbox(simAllX, y + 12, simAllW, 30, 'sim_all_season', () => { simulateWholeSeason(); });
 
             y += 64;
             let matches = tournamentData[currentRound - 1];
@@ -1078,12 +1136,48 @@
             (t, sh) => `${t.name}: ${sh.name} no logra conectar bien y el balón sale por la línea de fondo.`,
             (t, sh) => `${t.name}: ${sh.name} se precipita y el disparo termina en las gradas.`
         ];
-        const GOAL_TXT = [
-            (t, sh, as) => `¡GOL! ${t.name}: ${sh.name} anota tras asistencia de ${as.name}.`,
-            (t, sh, as) => `¡GOOOL de ${t.name}! ${sh.name} define con categoría, gran pase de ${as.name}.`,
-            (t, sh, as) => `¡GOL! ${sh.name} pone arriba a ${t.short} tras habilitación de ${as.name}.`,
-            (t, sh, as) => `¡GOL de ${t.name}! ${sh.name} no perdona dentro del área, asistencia de ${as.name}.`
-        ];
+        const GOAL_TEXT = {
+            normal: (t, sh, as) => pick([
+                `¡GOL! ${t.name}: ${sh.name} anota tras excelente pase de ${as.name}.`,
+                `¡GOL! ${sh.name} define con categoría, gran asistencia de ${as.name}. ${t.name} celebra.`,
+                `¡GOL de ${t.name}! ${sh.name} no perdona dentro del área tras habilitación de ${as.name}.`
+            ]),
+            cabezazo: (t, sh, as) => pick([
+                `¡GOL! ${t.name}: ${as.name} centra al área y ${sh.name} conecta de cabeza para el gol.`,
+                `¡GOL de cabeza! ${t.name}: ${sh.name} se eleva por encima de la defensa y remata el centro de ${as.name}.`
+            ]),
+            palomita: (t, sh, as) => pick([
+                `¡GOLAZO! ${t.name}: ${sh.name} se lanza en palomita para rematar el centro de ${as.name}.`
+            ]),
+            larga: (t, sh) => pick([
+                `¡GOLAZO! ${t.name}: ${sh.name} saca un remate impresionante desde fuera del área.`,
+                `¡GOLAZO! ${sh.name} prueba desde lejos y el balón se clava en el ángulo. ${t.name} festeja.`
+            ]),
+            campanita: (t, sh, as) => pick([
+                `¡GOLAZO! ${t.name}: ${sh.name} define con una vaselina espectacular tras pase de ${as.name}. ¡Categoría pura!`,
+                `¡GOLAZO! ${sh.name} sorprende al portero con una campanita perfecta, asistencia de ${as.name}.`
+            ]),
+            chilena: (t, sh, as) => pick([
+                `¡GOLAZO HISTÓRICO! ${t.name}: ¡${sh.name} conecta una CHILENA espectacular tras centro de ${as.name}! Una jugada para el recuerdo.`,
+                `¡INCREÍBLE! ${sh.name} se acomoda y define de CHILENA. ${t.name} no lo puede creer, obra de arte tras el centro de ${as.name}.`
+            ]),
+            penal: (t, sh) => pick([
+                `¡GOL DE PENAL! ${t.name}: ${sh.name} no falla desde los once pasos.`,
+                `¡GOL! ${sh.name} engaña al portero y anota el penal para ${t.name}.`
+            ])
+        };
+
+        // Entre más espectacular el tipo de gol, mucho menos probable (la chilena es rarísima)
+        function rollGoalType() {
+            let r = Math.random();
+            if (r < 0.006) return 'chilena';
+            if (r < 0.018) return 'campanita';
+            if (r < 0.05) return 'palomita';
+            if (r < 0.16) return 'cabezazo';
+            if (r < 0.24) return 'larga';
+            if (r < 0.30) return 'penal';
+            return 'normal';
+        }
         const CHANCE_TXT = [
             (t, p) => `${t.name}: ${p.name} arma una jugada de peligro en el área rival.`,
             (t, p) => `${t.name}: buena combinación ofensiva liderada por ${p.name}.`,
@@ -1096,15 +1190,45 @@
             (t, i, o) => `${t.name}: el técnico mueve el banco, ${i.name} por ${o.name}.`
         ];
 
-        function openSimulation(match, home, away) {
+        function openSimulation(match, home, away, forceRestart) {
+            if (!forceRestart && match.hScore !== '' && match.aScore !== '') {
+                if (match._sim) {
+                    // ya se jugó con simulación minuto a minuto: mostramos su historial completo
+                    simState = {
+                        match, home, away,
+                        minute: match._sim.minute, half: match._sim.half,
+                        hGoals: match._sim.hGoals, aGoals: match._sim.aGoals,
+                        log: match._sim.log.slice(),
+                        playing: false, finished: true, started: true, speed: 1,
+                        stoppage1: match._sim.stoppage1, stoppage2: match._sim.stoppage2,
+                        accumMs: 0, subsDone: { ...match._sim.subsDone },
+                        cardsHome: { ...match._sim.cardsHome }, cardsAway: { ...match._sim.cardsAway },
+                        sentOffHome: match._sim.sentOffHome, sentOffAway: match._sim.sentOffAway
+                    };
+                } else {
+                    // resultado ya existente (capturado a mano o con simulación rápida de temporada)
+                    simState = {
+                        match, home, away,
+                        minute: 0, half: 2, hGoals: match.hScore, aGoals: match.aScore,
+                        log: [{ minute: 'FIN', icon: 'full', text: `Resultado: ${home.name} ${match.hScore} - ${match.aScore} ${away.name}. (Sin minuto a minuto: fue capturado manualmente o con simulación rápida.)` }],
+                        playing: false, finished: true, started: true, speed: 1,
+                        stoppage1: 0, stoppage2: 0, accumMs: 0, subsDone: { h: 3, a: 3 },
+                        cardsHome: {}, cardsAway: {}, sentOffHome: 0, sentOffAway: 0
+                    };
+                }
+                simScrollY = 0;
+                return;
+            }
+
             simState = {
                 match, home, away,
                 minute: 0,
                 half: 1,
                 hGoals: 0, aGoals: 0,
                 log: [],
-                playing: true,
+                playing: false,
                 finished: false,
+                started: false,
                 speed: 1,
                 stoppage1: 1 + Math.floor(Math.random() * 4),
                 stoppage2: 2 + Math.floor(Math.random() * 5),
@@ -1114,7 +1238,13 @@
                 sentOffHome: 0, sentOffAway: 0
             };
             simScrollY = 0;
-            addSimLog(simState, 'kick', `Arranca el partido: ${home.name} vs ${away.name}.`);
+        }
+
+        function startSimulationNow() {
+            if (!simState || simState.started) return;
+            simState.started = true;
+            simState.playing = true;
+            addSimLog(simState, 'kick', `Arranca el partido: ${simState.home.name} vs ${simState.away.name}.`);
         }
 
         function maybeSubstitution(s, side) {
@@ -1184,7 +1314,8 @@
                 if (r2 < goalProb) {
                     let assist = randPlayer(team, Math.random() < 0.5 ? 'Mediocampistas' : 'Delanteros');
                     if (isHome) s.hGoals++; else s.aGoals++;
-                    addSimLog(s, 'goal', pick(GOAL_TXT)(team, shooter, assist));
+                    let gType = rollGoalType();
+                    addSimLog(s, 'goal', GOAL_TEXT[gType](team, shooter, assist));
                 } else if (r2 < goalProb + 0.45) {
                     addSimLog(s, 'save', pick(SAVE_TXT)(team, shooter, gkp, rival));
                 } else {
@@ -1214,6 +1345,12 @@
                 s.playing = false;
                 s.match.hScore = s.hGoals;
                 s.match.aScore = s.aGoals;
+                s.match._sim = {
+                    minute: s.minute, half: s.half, hGoals: s.hGoals, aGoals: s.aGoals,
+                    log: s.log.slice(), stoppage1: s.stoppage1, stoppage2: s.stoppage2,
+                    subsDone: { ...s.subsDone }, cardsHome: { ...s.cardsHome }, cardsAway: { ...s.cardsAway },
+                    sentOffHome: s.sentOffHome, sentOffAway: s.sentOffAway
+                };
                 calculateStats();
                 return;
             }
@@ -1270,12 +1407,12 @@
             drawText(`JORNADA ${String(currentRound).padStart(2, '0')}`, vw / 2, 25, THEME.textMuted, 11, 'center', '700');
 
             let y = 68;
-            let headerLabel = s.finished ? 'Final del partido' : (s.half === 1 ? 'Primer tiempo' : 'Segundo tiempo');
-            drawText(`${headerLabel}: ${displayMinute(s)}'`, vw / 2, y, THEME.accent, 15, 'center', '700');
+            let headerLabel = s.finished ? 'Final del partido' : (!s.started ? 'Antes del partido' : (s.half === 1 ? 'Primer tiempo' : 'Segundo tiempo'));
+            drawText(!s.started && !s.finished ? headerLabel : `${headerLabel}: ${displayMinute(s)}'`, vw / 2, y, THEME.accent, 15, 'center', '700');
             y += 26;
 
-            // Selector de velocidad
-            if (!s.finished) {
+            // Selector de velocidad (solo con el partido ya arrancado)
+            if (s.started && !s.finished) {
                 let speeds = [1, 2, 3, 4, 5];
                 let spW = 34, spGap = 6;
                 let totalW = speeds.length * spW + (speeds.length - 1) * spGap;
@@ -1307,6 +1444,23 @@
             y += 78;
             strokeRect(padX, y, contentW, 1, THEME.border);
             y += 14;
+
+            if (!s.started && !s.finished) {
+                // Pantalla previa al partido: el usuario decide cuándo arranca
+                let boxH = 120;
+                drawRect(padX, y + 20, contentW, boxH, THEME.card, 4);
+                strokeRect(padX, y + 20, contentW, boxH, THEME.border, 1, 4);
+                drawText('El partido está listo para comenzar.', padX + contentW / 2, y + 50, THEME.textMuted, 12, 'center', '500');
+
+                let btnW = 220, btnH2 = 46;
+                let btnX = padX + contentW / 2 - btnW / 2;
+                let btnY2 = y + 74;
+                let hoverStart = hoveredId === 'sim_start';
+                drawRect(btnX, btnY2, btnW, btnH2, hoverStart ? '#dab873' : THEME.accent, 3);
+                drawText('▶  INICIAR PARTIDO', btnX + btnW / 2, btnY2 + btnH2 / 2, '#0a0d12', 13, 'center', '700');
+                addHitbox(btnX, btnY2, btnW, btnH2, 'sim_start', () => { startSimulationNow(); });
+                return;
+            }
 
             // Log de eventos con scroll propio
             let logTop = y;
@@ -1367,7 +1521,7 @@
                 strokeRect(bx, btnY, bw - 4, btnH, THEME.border, 1, 3);
                 drawText(b.label, bx + (bw - 4) / 2, btnY + btnH / 2, hover ? THEME.accent : THEME.text, 10.5, 'center', '700');
                 addHitbox(bx, btnY, bw - 4, btnH, b.id, () => {
-                    if (b.id === 'sim_restart') { openSimulation(s.match, s.home, s.away); }
+                    if (b.id === 'sim_restart') { openSimulation(s.match, s.home, s.away, true); }
                     else if (b.id === 'sim_toggle') {
                         if (s.finished) { closeSimulation(); }
                         else { s.playing = !s.playing; }
@@ -1405,10 +1559,29 @@
                 ctx.rect(0, headerH, vw, vh - headerH);
                 ctx.clip();
 
-                if (currentTab === 'jornada') renderJornada(headerH);
-                else if (currentTab === 'tabla') renderTabla(headerH);
-                else if (currentTab === 'liguilla') renderLiguilla(headerH);
-                else if (currentTab === 'plantel') renderPlantel(headerH);
+                if (tabAnim) {
+                    let elapsed = (time) - tabAnim.start;
+                    let t = Math.max(0, Math.min(1, elapsed / tabAnim.duration));
+                    let eased = 1 - Math.pow(1 - t, 3);
+                    let realAddHitbox = addHitbox;
+                    if (t < 1) addHitbox = function () {}; // evita hitboxes desalineados mientras se anima
+
+                    let offOld = -tabAnim.dir * eased * vw;
+                    let offNew = tabAnim.dir * (1 - eased) * vw;
+
+                    ctx.save(); ctx.translate(offOld, 0);
+                    renderTabByName(tabAnim.from, headerH);
+                    ctx.restore();
+
+                    ctx.save(); ctx.translate(offNew, 0);
+                    renderTabByName(tabAnim.to, headerH);
+                    ctx.restore();
+
+                    addHitbox = realAddHitbox;
+                    if (t >= 1) tabAnim = null;
+                } else {
+                    renderTabByName(currentTab, headerH);
+                }
 
                 ctx.restore();
             }
