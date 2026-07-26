@@ -124,13 +124,13 @@
             if (!team.rosterKey || !ligaMX[team.rosterKey]) return [];
             let roster = ligaMX[team.rosterKey];
             let pool = [];
-            (roster.Delanteros || []).forEach(p => pool.push({ p, cat: 'DEL', weight: mode === 'goals' ? 3.2 : 1.1 }));
+            (roster.Delanteros || []).forEach(p => pool.push({ p, cat: 'DEL', weight: (mode === 'goals' ? 3.2 : 1.1) * playerImportance(p) }));
             (roster.Mediocampistas || []).forEach(p => {
                 let ofensivo = p.pos === 'MCO' || p.pos === 'ED' || p.pos === 'EI';
-                pool.push({ p, cat: 'MED', weight: mode === 'goals' ? (ofensivo ? 1.8 : 0.7) : (ofensivo ? 3.4 : 1.6) });
+                pool.push({ p, cat: 'MED', weight: (mode === 'goals' ? (ofensivo ? 1.8 : 0.7) : (ofensivo ? 3.4 : 1.6)) * playerImportance(p) });
             });
-            (roster.Defensores || []).forEach(p => pool.push({ p, cat: 'DEF', weight: mode === 'goals' ? 0.35 : 0.5 }));
-            (roster.Arqueros || []).forEach(p => pool.push({ p, cat: 'POR', weight: mode === 'goals' ? 0.015 : 0.08 }));
+            (roster.Defensores || []).forEach(p => pool.push({ p, cat: 'DEF', weight: (mode === 'goals' ? 0.35 : 0.5) * playerImportance(p) }));
+            (roster.Arqueros || []).forEach(p => pool.push({ p, cat: 'POR', weight: (mode === 'goals' ? 0.015 : 0.08) * playerImportance(p) }));
             return pool;
         }
 
@@ -964,23 +964,63 @@
             liguilla.semis = []; liguilla.final = null;
         }
 
-        // Jugador al azar de una categoría (para comentarios; puede repetirse, es normal)
+        // Peso de "importancia" de un jugador según su dorsal: los dorsales típicos de
+        // titular (1–35 aprox.) pesan mucho más que los de reserva/filial (90+, 100+),
+        // así que los protagonistas del comentario y del goleo son los más relevantes.
+        function playerImportance(p) {
+            let d = p.dorsal;
+            if (d === null || d === undefined) return 0.6;
+            if (d <= 35) return 1.0;
+            if (d <= 99) return 0.28;
+            return 0.1;
+        }
+
+        function pickWeighted(arr, weightFn) {
+            if (!arr || arr.length === 0) return null;
+            let total = 0;
+            let weights = arr.map(p => { let w = weightFn(p); total += w; return w; });
+            let r = Math.random() * total;
+            for (let i = 0; i < arr.length; i++) {
+                r -= weights[i];
+                if (r <= 0) return arr[i];
+            }
+            return arr[arr.length - 1];
+        }
+
+        // Jugador ponderado por importancia (prioriza titulares, no jugadores al azar)
         function randPlayer(team, category) {
             if (!team.rosterKey || !ligaMX[team.rosterKey]) return { name: 'Jugador' };
             let arr = ligaMX[team.rosterKey][category];
             if (!arr || arr.length === 0) return { name: 'Jugador' };
-            return arr[Math.floor(Math.random() * arr.length)];
+            return pickWeighted(arr, playerImportance) || arr[0];
         }
 
         // Fuerza de ataque/defensa de un equipo: si ya jugó partidos en el torneo se usa
         // su rendimiento real (goles a favor/en contra por partido); si no, una base
         // pareja con una variación leve y determinista por equipo (para que no sea plano).
+        // Ranking oficial de clubes (puntos actuales) — a mayor puntaje, mejor nivel del equipo.
+        const RANKING_POINTS = {
+            'Toluca': 1280, 'Tigres': 1273, 'Cruz Azul': 1261, 'América': 1225,
+            'Chivas': 1221, 'Pachuca': 1214, 'Pumas': 1205, 'Monterrey': 1195,
+            'Tijuana': 1181, 'FC Juárez': 1173, 'León': 1169, 'Necaxa': 1168,
+            'Atlas': 1164, 'San Luis': 1158, 'Querétaro': 1157, 'Atlante': 1149,
+            'Puebla': 1126, 'Santos': 1121
+        };
+        const RANK_MIN = Math.min(...Object.values(RANKING_POINTS));
+        const RANK_MAX = Math.max(...Object.values(RANKING_POINTS));
+
         function teamRating(team, mode) {
-            let base = 1.35 + ((team.id * 37) % 23) / 100; // 1.35–1.57, determinista por equipo
+            let pts = RANKING_POINTS[team.name] || (RANK_MIN + RANK_MAX) / 2;
+            let power = (pts - RANK_MIN) / (RANK_MAX - RANK_MIN); // 0 (más flojo) .. 1 (más fuerte)
+            let atkBase = 1.15 + power * 0.55;   // equipos de mayor ranking atacan mejor
+            let defBase = 1.70 - power * 0.55;   // y conceden menos
+            let base = mode === 'atk' ? atkBase : defBase;
+
             let stat = teamStats.find(t => t.id === team.id);
             if (stat && stat.pld > 0) {
-                if (mode === 'atk') return (stat.gf / stat.pld) * 0.65 + base * 0.35;
-                return (stat.ga / stat.pld) * 0.65 + base * 0.35;
+                // El rendimiento real del torneo pesa más, pero el ranking sigue influyendo
+                if (mode === 'atk') return (stat.gf / stat.pld) * 0.6 + base * 0.4;
+                return (stat.ga / stat.pld) * 0.6 + base * 0.4;
             }
             return base;
         }
@@ -998,6 +1038,64 @@
             s.log.push({ minute: displayMinute(s), icon: iconType, text });
         }
 
+        function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+        const FOUL_TXT = [
+            (t, p) => `${t.name}: falta de ${p.name}.`,
+            (t, p) => `${t.name}: ${p.name} corta el avance rival con una falta.`,
+            (t, p) => `${t.name}: infracción de ${p.name} en mitad de cancha.`,
+            (t, p) => `${t.name}: ${p.name} llega tarde a la disputa y comete falta.`
+        ];
+        const YELLOW_TXT = [
+            (t, p) => `${t.name}: tarjeta amarilla para ${p.name} por falta dura.`,
+            (t, p) => `${t.name}: el árbitro amonesta a ${p.name}.`,
+            (t, p) => `${t.name}: ${p.name} ve la amarilla por protestar.`,
+            (t, p) => `${t.name}: falta táctica de ${p.name}, tarjeta amarilla.`
+        ];
+        const SECOND_YELLOW_TXT = [
+            (t, p) => `${t.name}: ¡Doble amarilla! ${p.name} ve la segunda tarjeta y es expulsado.`,
+            (t, p) => `${t.name}: expulsión de ${p.name} tras acumular dos amarillas.`
+        ];
+        const RED_TXT = [
+            (t, p) => `${t.name}: ¡Expulsión! Tarjeta roja directa para ${p.name}.`,
+            (t, p) => `${t.name}: ${p.name} es expulsado tras una entrada muy fuerte.`,
+            (t, p) => `${t.name}: roja directa para ${p.name} por una falta violenta.`
+        ];
+        const CORNER_TXT = [
+            (t) => `${t.name}: saque de esquina.`,
+            (t) => `${t.name}: gana un córner tras un buen centro.`,
+            (t) => `${t.name}: córner para el equipo tras un tiro bloqueado.`
+        ];
+        const SAVE_TXT = [
+            (t, sh, gk, r) => `${t.name}: remate de ${sh.name}. El portero ${gk.name} (${r.short}) responde con una gran atajada.`,
+            (t, sh, gk, r) => `${t.name}: ${sh.name} prueba desde media distancia, pero ${gk.name} controla sin problemas.`,
+            (t, sh, gk, r) => `${t.name}: disparo de ${sh.name}. ${gk.name} despeja a córner.`,
+            (t, sh, gk, r) => `${t.name}: gran atajada de ${gk.name} para evitar el gol de ${sh.name}.`
+        ];
+        const SHOTOFF_TXT = [
+            (t, sh) => `${t.name}: ${sh.name} dispara, pero el balón se va desviado.`,
+            (t, sh) => `${t.name}: remate de ${sh.name} que se pierde por encima del travesaño.`,
+            (t, sh) => `${t.name}: ${sh.name} no logra conectar bien y el balón sale por la línea de fondo.`,
+            (t, sh) => `${t.name}: ${sh.name} se precipita y el disparo termina en las gradas.`
+        ];
+        const GOAL_TXT = [
+            (t, sh, as) => `¡GOL! ${t.name}: ${sh.name} anota tras asistencia de ${as.name}.`,
+            (t, sh, as) => `¡GOOOL de ${t.name}! ${sh.name} define con categoría, gran pase de ${as.name}.`,
+            (t, sh, as) => `¡GOL! ${sh.name} pone arriba a ${t.short} tras habilitación de ${as.name}.`,
+            (t, sh, as) => `¡GOL de ${t.name}! ${sh.name} no perdona dentro del área, asistencia de ${as.name}.`
+        ];
+        const CHANCE_TXT = [
+            (t, p) => `${t.name}: ${p.name} arma una jugada de peligro en el área rival.`,
+            (t, p) => `${t.name}: buena combinación ofensiva liderada por ${p.name}.`,
+            (t, p) => `${t.name}: ${p.name} filtra un pase peligroso al área.`,
+            (t, p) => `${t.name}: ${p.name} encara a dos rivales y genera peligro.`
+        ];
+        const SUB_TXT = [
+            (t, i, o) => `${t.name}: cambio, entra ${i.name} en lugar de ${o.name}.`,
+            (t, i, o) => `${t.name}: doble función táctica, ${i.name} releva a ${o.name}.`,
+            (t, i, o) => `${t.name}: el técnico mueve el banco, ${i.name} por ${o.name}.`
+        ];
+
         function openSimulation(match, home, away) {
             simState = {
                 match, home, away,
@@ -1007,14 +1105,16 @@
                 log: [],
                 playing: true,
                 finished: false,
+                speed: 1,
                 stoppage1: 1 + Math.floor(Math.random() * 4),
                 stoppage2: 2 + Math.floor(Math.random() * 5),
                 accumMs: 0,
-                tickMs: 320,
-                subsDone: { h: 0, a: 0 }
+                subsDone: { h: 0, a: 0 },
+                cardsHome: {}, cardsAway: {},
+                sentOffHome: 0, sentOffAway: 0
             };
             simScrollY = 0;
-            addSimLog(simState, 'kick', `Arranca el partido en ${home.name} vs ${away.name}.`);
+            addSimLog(simState, 'kick', `Arranca el partido: ${home.name} vs ${away.name}.`);
         }
 
         function maybeSubstitution(s, side) {
@@ -1026,12 +1126,40 @@
             s.subsDone[side]++;
             let out = randPlayer(team, Math.random() < 0.5 ? 'Delanteros' : 'Mediocampistas');
             let inRoster = randPlayer(team, Math.random() < 0.5 ? 'Mediocampistas' : 'Delanteros');
-            addSimLog(s, 'sub', `${team.name}: cambio, entra ${inRoster.name} en lugar de ${out.name}.`);
+            addSimLog(s, 'sub', pick(SUB_TXT)(team, inRoster, out));
+        }
+
+        function applyCard(s, isHome, team, p) {
+            let cardMap = isHome ? s.cardsHome : s.cardsAway;
+            let key = p.name;
+            let r = Math.random();
+            if (r < 0.01) {
+                // roja directa, muy poco probable
+                cardMap[key] = 2;
+                if (isHome) s.sentOffHome++; else s.sentOffAway++;
+                addSimLog(s, 'red', pick(RED_TXT)(team, p));
+                return;
+            }
+            if (r < 0.20) {
+                let already = cardMap[key] || 0;
+                if (already >= 1) {
+                    cardMap[key] = 2;
+                    if (isHome) s.sentOffHome++; else s.sentOffAway++;
+                    addSimLog(s, 'red', pick(SECOND_YELLOW_TXT)(team, p));
+                } else {
+                    cardMap[key] = 1;
+                    addSimLog(s, 'yellow', pick(YELLOW_TXT)(team, p));
+                }
+                return;
+            }
+            addSimLog(s, 'foul', pick(FOUL_TXT)(team, p));
         }
 
         function generateMinuteEvent(s) {
-            let atkH = teamRating(s.home, 'atk'), defH = teamRating(s.home, 'def');
-            let atkA = teamRating(s.away, 'atk'), defA = teamRating(s.away, 'def');
+            let atkH = teamRating(s.home, 'atk') * Math.max(0.55, 1 - s.sentOffHome * 0.18);
+            let defH = teamRating(s.home, 'def') * (1 + s.sentOffHome * 0.16);
+            let atkA = teamRating(s.away, 'atk') * Math.max(0.55, 1 - s.sentOffAway * 0.18);
+            let defA = teamRating(s.away, 'def') * (1 + s.sentOffAway * 0.16);
 
             if (Math.random() > 0.30) return; // no todos los minutos tienen jugada
 
@@ -1044,17 +1172,11 @@
 
             let roll = Math.random();
             if (roll < 0.14) {
-                // falta, a veces con tarjeta
-                let p = randPlayer(team, 'Defensores');
-                if (Math.random() < 0.22) {
-                    addSimLog(s, 'yellow', `${team.name}: tarjeta amarilla para ${p.name} por falta.`);
-                } else {
-                    addSimLog(s, 'foul', `${team.name}: falta cometida por ${p.name}.`);
-                }
+                let p = randPlayer(team, Math.random() < 0.7 ? 'Defensores' : 'Mediocampistas');
+                applyCard(s, isHome, team, p);
             } else if (roll < 0.20) {
-                addSimLog(s, 'corner', `${team.name}: saque de esquina.`);
+                addSimLog(s, 'corner', pick(CORNER_TXT)(team));
             } else if (roll < 0.86) {
-                // remate: se decide si es gol, atajada o desviado
                 let shooter = randPlayer(team, Math.random() < 0.72 ? 'Delanteros' : 'Mediocampistas');
                 let gkp = randPlayer(rival, 'Arqueros');
                 let goalProb = Math.max(0.05, Math.min(0.30, 0.10 + (myAtk - rivalDef) * 0.09));
@@ -1062,15 +1184,15 @@
                 if (r2 < goalProb) {
                     let assist = randPlayer(team, Math.random() < 0.5 ? 'Mediocampistas' : 'Delanteros');
                     if (isHome) s.hGoals++; else s.aGoals++;
-                    addSimLog(s, 'goal', `¡GOL! ${team.name}: ${shooter.name} anota tras asistencia de ${assist.name}.`);
+                    addSimLog(s, 'goal', pick(GOAL_TXT)(team, shooter, assist));
                 } else if (r2 < goalProb + 0.45) {
-                    addSimLog(s, 'save', `${team.name}: remate de ${shooter.name}. El portero ${gkp.name} (${rival.short}) responde bien.`);
+                    addSimLog(s, 'save', pick(SAVE_TXT)(team, shooter, gkp, rival));
                 } else {
-                    addSimLog(s, 'shot', `${team.name}: ${shooter.name} dispara, pero el balón se va desviado.`);
+                    addSimLog(s, 'shot', pick(SHOTOFF_TXT)(team, shooter));
                 }
             } else {
                 let p = randPlayer(team, 'Mediocampistas');
-                addSimLog(s, 'chance', `${team.name}: ${p.name} arma una jugada de peligro en el área rival.`);
+                addSimLog(s, 'chance', pick(CHANCE_TXT)(team, p));
             }
         }
 
@@ -1104,9 +1226,10 @@
         function tickSimulation(dt) {
             if (!simState || !simState.playing || simState.finished) return;
             simState.accumMs += dt;
+            let effectiveTick = 340 / simState.speed;
             let guard = 0;
-            while (simState.accumMs >= simState.tickMs && simState.playing && guard < 30) {
-                simState.accumMs -= simState.tickMs;
+            while (simState.accumMs >= effectiveTick && simState.playing && guard < 60) {
+                simState.accumMs -= effectiveTick;
                 advanceSimMinute(simState);
                 guard++;
             }
@@ -1115,6 +1238,7 @@
         const SIM_ICON_COLOR = {
             goal: () => THEME.accent,
             yellow: () => '#e0b53a',
+            red: () => THEME.red,
             foul: () => THEME.textMuted,
             corner: () => THEME.textMuted,
             save: () => THEME.textMuted,
@@ -1130,24 +1254,48 @@
             let s = simState;
             drawRect(0, 0, vw, vh, THEME.bgDark);
 
-            let padX = vw < 600 ? 12 : 24;
-            let contentW = vw - padX * 2;
+            // En pantallas grandes el panel se centra en un ancho fijo para que no se
+            // vea estirado; en móvil ocupa casi todo el ancho disponible.
+            let outerPad = vw < 600 ? 12 : 24;
+            let panelW = Math.min(vw - outerPad * 2, 640);
+            let padX = (vw - panelW) / 2;
+            let contentW = panelW;
 
             // Barra superior
             drawRect(0, 0, vw, 50, THEME.bgLight, 0);
             strokeRect(0, 49, vw, 1, THEME.border);
             let backHover = hoveredId === 'sim_back';
-            drawText('←', padX, 25, backHover ? THEME.accent : THEME.text, 20, 'left', '700');
+            drawText('←', outerPad, 25, backHover ? THEME.accent : THEME.text, 20, 'left', '700');
             addHitbox(0, 0, 70, 50, 'sim_back', () => { closeSimulation(); });
             drawText(`JORNADA ${String(currentRound).padStart(2, '0')}`, vw / 2, 25, THEME.textMuted, 11, 'center', '700');
 
-            let y = 70;
+            let y = 68;
             let headerLabel = s.finished ? 'Final del partido' : (s.half === 1 ? 'Primer tiempo' : 'Segundo tiempo');
             drawText(`${headerLabel}: ${displayMinute(s)}'`, vw / 2, y, THEME.accent, 15, 'center', '700');
-            y += 34;
+            y += 26;
+
+            // Selector de velocidad
+            if (!s.finished) {
+                let speeds = [1, 2, 3, 4, 5];
+                let spW = 34, spGap = 6;
+                let totalW = speeds.length * spW + (speeds.length - 1) * spGap;
+                let spX = vw / 2 - totalW / 2;
+                speeds.forEach(sp => {
+                    let isActive = s.speed === sp;
+                    let hoverId = `speed_${sp}`;
+                    let isHover = hoveredId === hoverId;
+                    drawRect(spX, y, spW, 26, isActive ? THEME.accent : (isHover ? THEME.cardHover : THEME.card), 3);
+                    strokeRect(spX, y, spW, 26, isActive ? THEME.accent : THEME.border, 1, 3);
+                    drawText(`x${sp}`, spX + spW / 2, y + 13, isActive ? '#0a0d12' : THEME.textMuted, 11, 'center', '700');
+                    addHitbox(spX, y, spW, 26, hoverId, () => { s.speed = sp; });
+                    spX += spW + spGap;
+                });
+                y += 40;
+            } else {
+                y += 8;
+            }
 
             // Marcador
-            let halfW = contentW / 2;
             drawBadge(s.home, padX + 30, y + 20, 24);
             drawText(s.home.name.toUpperCase(), padX + 30, y + 54, THEME.text, 11, 'center', '600');
             drawBadge(s.away, padX + contentW - 30, y + 20, 24);
@@ -1156,9 +1304,9 @@
             drawText('-', vw / 2, y + 20, THEME.textMuted, 22, 'center', '600');
             drawText(`${s.aGoals}`, vw / 2 + 26, y + 20, THEME.text, 30, 'center', '800', THEME.fontDisplay);
 
-            y += 90;
+            y += 78;
             strokeRect(padX, y, contentW, 1, THEME.border);
-            y += 16;
+            y += 14;
 
             // Log de eventos con scroll propio
             let logTop = y;
