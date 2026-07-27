@@ -124,13 +124,13 @@
             if (!team.rosterKey || !ligaMX[team.rosterKey]) return [];
             let roster = ligaMX[team.rosterKey];
             let pool = [];
-            (roster.Delanteros || []).forEach(p => pool.push({ p, cat: 'DEL', weight: (mode === 'goals' ? 3.2 : 1.1) * playerImportance(p) }));
-            (roster.Mediocampistas || []).forEach(p => {
+            (roster.Delanteros || []).forEach((p, i) => pool.push({ p, cat: 'DEL', weight: (mode === 'goals' ? 3.2 : 1.1) * playerImportance(p, i) }));
+            (roster.Mediocampistas || []).forEach((p, i) => {
                 let ofensivo = p.pos === 'MCO' || p.pos === 'ED' || p.pos === 'EI';
-                pool.push({ p, cat: 'MED', weight: (mode === 'goals' ? (ofensivo ? 1.8 : 0.7) : (ofensivo ? 3.4 : 1.6)) * playerImportance(p) });
+                pool.push({ p, cat: 'MED', weight: (mode === 'goals' ? (ofensivo ? 1.8 : 0.7) : (ofensivo ? 3.4 : 1.6)) * playerImportance(p, i) });
             });
-            (roster.Defensores || []).forEach(p => pool.push({ p, cat: 'DEF', weight: (mode === 'goals' ? 0.35 : 0.5) * playerImportance(p) }));
-            (roster.Arqueros || []).forEach(p => pool.push({ p, cat: 'POR', weight: (mode === 'goals' ? 0.015 : 0.08) * playerImportance(p) }));
+            (roster.Defensores || []).forEach((p, i) => pool.push({ p, cat: 'DEF', weight: (mode === 'goals' ? 0.35 : 0.5) * playerImportance(p, i) }));
+            (roster.Arqueros || []).forEach((p, i) => pool.push({ p, cat: 'POR', weight: (mode === 'goals' ? 0.015 : 0.08) * playerImportance(p, i) }));
             return pool;
         }
 
@@ -480,41 +480,37 @@
             return h;
         }
 
-        // Aproximación de una variable Poisson (número de goles esperados de un equipo)
-        function poissonSample(lambda) {
-            let L = Math.exp(-lambda), k = 0, p = 1;
-            do { k++; p *= Math.random(); } while (p > L && k < 10);
-            return k - 1;
+        // Simula con el motor completo (minuto a minuto) pero de forma instantánea, sin
+        // mostrar la animación en vivo. El historial completo queda guardado igual que si
+        // se hubiera visto en vivo, así que después se puede repasar jugada por jugada.
+        function simulateMatchInstant(match, home, away, onFinish) {
+            let s = buildSimState(home, away, onFinish);
+            s.match = match;
+            s.started = true; s.playing = true;
+            addSimLog(s, 'kick', `Arranca el partido: ${home.name} vs ${away.name}.`);
+            let guard = 0;
+            while (!s.finished && guard < 500) { advanceSimMinute(s); guard++; }
         }
 
-        function quickSimulateMatch(home, away) {
-            let atkH = teamRating(home, 'atk'), defH = teamRating(home, 'def');
-            let atkA = teamRating(away, 'atk'), defA = teamRating(away, 'def');
-            let lambdaH = Math.max(0.15, (atkH / defA) * 1.35);
-            let lambdaA = Math.max(0.1, (atkA / defH) * 1.05);
-            return { h: poissonSample(lambdaH), a: poissonSample(lambdaA) };
-        }
-
-        function simulateWholeSeason() {
-            let pending = 0;
-            tournamentData.forEach(round => round.forEach(m => { if (m.hScore === '' || m.aScore === '') pending++; }));
-            if (pending === 0) {
-                if (!confirm('Todos los partidos ya tienen resultado. ¿Quieres volver a simular TODA la temporada desde cero?')) return;
-            } else {
-                if (!confirm(`Se van a simular ${pending} partido(s) pendientes de forma instantánea (sin minuto a minuto). ¿Continuar?`)) return;
+        function simulateRoundInstant() {
+            let round = tournamentData[currentRound - 1];
+            let pending = round.filter(m => m.hScore === '' || m.aScore === '');
+            let toSim = pending;
+            if (pending.length === 0) {
+                if (!confirm(`La Jornada ${currentRound} ya tiene todos los resultados. ¿Volver a simularla completa desde cero?`)) return;
+                toSim = round;
+            } else if (!confirm(`Se van a simular ${pending.length} partido(s) de la Jornada ${currentRound} con minuto a minuto completo (de forma instantánea). ¿Continuar?`)) {
+                return;
             }
-            tournamentData.forEach(round => {
-                round.forEach(m => {
-                    if (m.hScore === '' || m.aScore === '') {
-                        let tH = TEAMS.find(t => t.id === m.home);
-                        let tA = TEAMS.find(t => t.id === m.away);
-                        let res = quickSimulateMatch(tH, tA);
-                        m.hScore = res.h; m.aScore = res.a;
-                        m._sim = null; // sin historial minuto a minuto disponible
-                    }
+            toSim.forEach(m => {
+                let tH = TEAMS.find(t => t.id === m.home);
+                let tA = TEAMS.find(t => t.id === m.away);
+                simulateMatchInstant(m, tH, tA, (s, snap) => {
+                    m.hScore = s.hGoals; m.aScore = s.aGoals; m._sim = snap;
                 });
             });
             calculateStats();
+            if (currentRound < TOTAL_ROUNDS) currentRound++;
         }
 
         function renderJornada(startY) {
@@ -552,13 +548,13 @@
             strokeRect(padX, y, contentW, 54, THEME.border, 1, 4);
             drawText(`JORNADA ${String(currentRound).padStart(2, '0')}`, padX + 22, y + 27, THEME.text, 17, 'left', '700');
 
-            let simAllW = vw < 600 ? 150 : 190;
+            let simAllW = vw < 600 ? 168 : 200;
             let simAllX = padX + contentW - simAllW - 14;
-            let simAllHover = hoveredId === 'sim_all_season';
-            drawRect(simAllX, y + 12, simAllW, 30, simAllHover ? THEME.accent : THEME.accentSoft, 3);
+            let simAllHover = hoveredId === 'sim_round';
+            drawRect(simAllX, y + 12, simAllW, 30, simAllHover ? THEME.accent : THEME.card, 3);
             strokeRect(simAllX, y + 12, simAllW, 30, THEME.accent, 1, 3);
-            drawText('⚡ SIMULAR TEMPORADA', simAllX + simAllW / 2, y + 27, simAllHover ? '#0a0d12' : THEME.accent, 10, 'center', '700');
-            addHitbox(simAllX, y + 12, simAllW, 30, 'sim_all_season', () => { simulateWholeSeason(); });
+            drawText('SIMULAR JORNADA →', simAllX + simAllW / 2, y + 27, simAllHover ? '#0a0d12' : THEME.accent, 10.5, 'center', '700');
+            addHitbox(simAllX, y + 12, simAllW, 30, 'sim_round', () => { simulateRoundInstant(); });
 
             y += 64;
             let matches = tournamentData[currentRound - 1];
@@ -681,9 +677,11 @@
         }
 
         function drawMatchupCard(m, x, y, w, phase) {
-            let h = 96;
-            drawRect(x, y, w, h, THEME.card, 4);
-            strokeRect(x, y, w, h, THEME.border, 1, 4);
+            let baseH = 96;
+            let footerH = 34;
+            let h = baseH + footerH;
+            drawRect(x, y, w, h, THEME.card, 5);
+            strokeRect(x, y, w, h, THEME.border, 1, 5);
 
             if (!m) return h;
             let isFinal = phase === 'final';
@@ -733,23 +731,40 @@
                 yOff += 48;
             });
 
+            // Botones para repasar/generar el minuto a minuto de cada pierna
+            strokeRect(x, y + baseH, w, 1, THEME.border);
+            let legs = [
+                { leg: 'ida', label: m._simIda ? '▶ VER IDA' : (m.ida1 !== '' && m.ida2 !== '' ? '▶ IDA (rápida)' : '▶ SIMULAR IDA') },
+                { leg: 'vuelta', label: m._simVuelta ? '▶ VER VUELTA' : (m.vue1 !== '' && m.vue2 !== '' ? '▶ VUELTA (rápida)' : '▶ SIMULAR VUELTA') }
+            ];
+            legs.forEach((lg, i) => {
+                let bx = x + i * (w / 2);
+                let bw2 = w / 2;
+                let hoverKey = `legbtn_${phase}_${m.id}_${lg.leg}`;
+                let isHover = hoveredId === hoverKey;
+                drawRect(bx + 2, y + baseH + 2, bw2 - 4, footerH - 4, isHover ? THEME.accentSoft : 'transparent', 3);
+                drawText(lg.label, bx + bw2 / 2, y + baseH + footerH / 2, isHover ? THEME.accent : THEME.textMuted, 10, 'center', '700');
+                addHitbox(bx, y + baseH, bw2, footerH, hoverKey, () => { openLegSimulation(m, lg.leg, isFinal, false); });
+            });
+
             if (isFinal && aggTied) {
-                h += 64;
-                strokeRect(x, y + 96, w, 64, THEME.border);
-                drawText("TANDA DE PENALES", x + w / 2, y + 114, THEME.accent, 10, 'center', '700');
+                let penH = 64;
+                strokeRect(x, y + h, w, penH, THEME.border);
+                drawText("TANDA DE PENALES", x + w / 2, y + h + 18, THEME.accent, 10, 'center', '700');
 
                 let inW = 34, inH = 34;
                 let hP1 = hoveredId === 'lig_pen1';
-                drawRect(x + w / 2 - 52, y + 122, inW, inH, hP1 ? THEME.cardHover : THEME.card, 3); strokeRect(x + w / 2 - 52, y + 122, inW, inH, THEME.border, 1, 3);
-                drawText(m.pen1 !== '' ? m.pen1 : '–', x + w / 2 - 35, y + 139, m.pen1 !== '' ? THEME.text : THEME.textMuted, 14, 'center', '700');
-                addHitbox(x + w / 2 - 52, y + 122, inW, inH, `lig_pen1`, (box) => { openScoreInput(box, m, 'pen1', () => { m.winner = calculateWinner(m, isFinal); checkLiguillaProgress(); }); });
+                drawRect(x + w / 2 - 52, y + h + 26, inW, inH, hP1 ? THEME.cardHover : THEME.card, 3); strokeRect(x + w / 2 - 52, y + h + 26, inW, inH, THEME.border, 1, 3);
+                drawText(m.pen1 !== '' ? m.pen1 : '–', x + w / 2 - 35, y + h + 43, m.pen1 !== '' ? THEME.text : THEME.textMuted, 14, 'center', '700');
+                addHitbox(x + w / 2 - 52, y + h + 26, inW, inH, `lig_pen1`, (box) => { openScoreInput(box, m, 'pen1', () => { m.winner = calculateWinner(m, isFinal); checkLiguillaProgress(); }); });
 
-                drawText("VS", x + w / 2, y + 139, THEME.textMuted, 12, 'center', '600');
+                drawText("VS", x + w / 2, y + h + 43, THEME.textMuted, 12, 'center', '600');
 
                 let hP2 = hoveredId === 'lig_pen2';
-                drawRect(x + w / 2 + 18, y + 122, inW, inH, hP2 ? THEME.cardHover : THEME.card, 3); strokeRect(x + w / 2 + 18, y + 122, inW, inH, THEME.border, 1, 3);
-                drawText(m.pen2 !== '' ? m.pen2 : '–', x + w / 2 + 35, y + 139, m.pen2 !== '' ? THEME.text : THEME.textMuted, 14, 'center', '700');
-                addHitbox(x + w / 2 + 18, y + 122, inW, inH, `lig_pen2`, (box) => { openScoreInput(box, m, 'pen2', () => { m.winner = calculateWinner(m, isFinal); checkLiguillaProgress(); }); });
+                drawRect(x + w / 2 + 18, y + h + 26, inW, inH, hP2 ? THEME.cardHover : THEME.card, 3); strokeRect(x + w / 2 + 18, y + h + 26, inW, inH, THEME.border, 1, 3);
+                drawText(m.pen2 !== '' ? m.pen2 : '–', x + w / 2 + 35, y + h + 43, m.pen2 !== '' ? THEME.text : THEME.textMuted, 14, 'center', '700');
+                addHitbox(x + w / 2 + 18, y + h + 26, inW, inH, `lig_pen2`, (box) => { openScoreInput(box, m, 'pen2', () => { m.winner = calculateWinner(m, isFinal); checkLiguillaProgress(); }); });
+                h += penH;
             }
 
             return h;
@@ -779,9 +794,9 @@
                     let col = isMobile ? 0 : i % 2;
                     let row = isMobile ? i : Math.floor(i / 2);
                     let cx = padX + (col * (cardW + 20));
-                    let cy = y + (row * 112);
+                    let cy = y + (row * 148);
                     drawMatchupCard(m, cx, cy, cardW, 'cuartos');
-                    cY = Math.max(cY, cy + 112);
+                    cY = Math.max(cY, cy + 148);
                 });
             }
             y = cY + 20;
@@ -794,9 +809,9 @@
                     let col = isMobile ? 0 : i % 2;
                     let row = isMobile ? i : 0;
                     let cx = padX + (col * (cardW + 20));
-                    let cy = y + (row * 112);
+                    let cy = y + (row * 148);
                     drawMatchupCard(m, cx, cy, cardW, 'semis');
-                    sY = Math.max(sY, cy + 112);
+                    sY = Math.max(sY, cy + 148);
                 });
                 y = sY + 20;
             } else {
@@ -1022,21 +1037,32 @@
             liguilla.semis = []; liguilla.final = null;
         }
 
-        // Peso de "importancia" de un jugador según su dorsal: los dorsales típicos de
-        // titular (1–35 aprox.) pesan mucho más que los de reserva/filial (90+, 100+),
-        // así que los protagonistas del comentario y del goleo son los más relevantes.
-        function playerImportance(p) {
+        // Peso de "importancia" de un jugador: combina su dorsal (los números típicos de
+        // primer equipo, 1–35 aprox., pesan mucho más que los de filial/reserva, 90+, 100+)
+        // con su posición dentro de la lista de la plantilla, ya que en estos roles los
+        // jugadores más relevantes de cada equipo suelen figurar primero. No es un dato
+        // oficial de alineación confirmada (eso cambia partido a partido en la vida real),
+        // pero evita que el protagonismo caiga siempre en gente de banca/filial.
+        function playerImportance(p, idx) {
             let d = p.dorsal;
-            if (d === null || d === undefined) return 0.6;
-            if (d <= 35) return 1.0;
-            if (d <= 99) return 0.28;
-            return 0.1;
+            let dorsalW;
+            if (d === null || d === undefined) dorsalW = 0.6;
+            else if (d <= 35) dorsalW = 1.0;
+            else if (d <= 99) dorsalW = 0.22;
+            else dorsalW = 0.08;
+            let orderW = idx === undefined ? 1 : 1 / (1 + idx * 0.16);
+            return dorsalW * orderW;
         }
 
-        function pickWeighted(arr, weightFn) {
+        function pickWeighted(arr, weightFn, excludeNames) {
             if (!arr || arr.length === 0) return null;
             let total = 0;
-            let weights = arr.map(p => { let w = weightFn(p); total += w; return w; });
+            let weights = arr.map((p, i) => {
+                let w = (excludeNames && excludeNames.has(p.name)) ? 0 : weightFn(p, i);
+                total += w;
+                return w;
+            });
+            if (total <= 0) return arr[0];
             let r = Math.random() * total;
             for (let i = 0; i < arr.length; i++) {
                 r -= weights[i];
@@ -1045,12 +1071,14 @@
             return arr[arr.length - 1];
         }
 
-        // Jugador ponderado por importancia (prioriza titulares, no jugadores al azar)
-        function randPlayer(team, category) {
+        // Jugador ponderado por importancia (prioriza titulares, no jugadores al azar).
+        // `exclude` es opcional: un Set de nombres que no deben salir elegidos (por ejemplo,
+        // para que el asistente de un gol nunca sea el mismo que anotó).
+        function randPlayer(team, category, exclude) {
             if (!team.rosterKey || !ligaMX[team.rosterKey]) return { name: 'Jugador' };
             let arr = ligaMX[team.rosterKey][category];
             if (!arr || arr.length === 0) return { name: 'Jugador' };
-            return pickWeighted(arr, playerImportance) || arr[0];
+            return pickWeighted(arr, playerImportance, exclude) || arr[0];
         }
 
         // Fuerza de ataque/defensa de un equipo: si ya jugó partidos en el torneo se usa
@@ -1190,38 +1218,9 @@
             (t, i, o) => `${t.name}: el técnico mueve el banco, ${i.name} por ${o.name}.`
         ];
 
-        function openSimulation(match, home, away, forceRestart) {
-            if (!forceRestart && match.hScore !== '' && match.aScore !== '') {
-                if (match._sim) {
-                    // ya se jugó con simulación minuto a minuto: mostramos su historial completo
-                    simState = {
-                        match, home, away,
-                        minute: match._sim.minute, half: match._sim.half,
-                        hGoals: match._sim.hGoals, aGoals: match._sim.aGoals,
-                        log: match._sim.log.slice(),
-                        playing: false, finished: true, started: true, speed: 1,
-                        stoppage1: match._sim.stoppage1, stoppage2: match._sim.stoppage2,
-                        accumMs: 0, subsDone: { ...match._sim.subsDone },
-                        cardsHome: { ...match._sim.cardsHome }, cardsAway: { ...match._sim.cardsAway },
-                        sentOffHome: match._sim.sentOffHome, sentOffAway: match._sim.sentOffAway
-                    };
-                } else {
-                    // resultado ya existente (capturado a mano o con simulación rápida de temporada)
-                    simState = {
-                        match, home, away,
-                        minute: 0, half: 2, hGoals: match.hScore, aGoals: match.aScore,
-                        log: [{ minute: 'FIN', icon: 'full', text: `Resultado: ${home.name} ${match.hScore} - ${match.aScore} ${away.name}. (Sin minuto a minuto: fue capturado manualmente o con simulación rápida.)` }],
-                        playing: false, finished: true, started: true, speed: 1,
-                        stoppage1: 0, stoppage2: 0, accumMs: 0, subsDone: { h: 3, a: 3 },
-                        cardsHome: {}, cardsAway: {}, sentOffHome: 0, sentOffAway: 0
-                    };
-                }
-                simScrollY = 0;
-                return;
-            }
-
-            simState = {
-                match, home, away,
+        function buildSimState(home, away, onFinish) {
+            return {
+                home, away,
                 minute: 0,
                 half: 1,
                 hGoals: 0, aGoals: 0,
@@ -1235,8 +1234,80 @@
                 accumMs: 0,
                 subsDone: { h: 0, a: 0 },
                 cardsHome: {}, cardsAway: {},
-                sentOffHome: 0, sentOffAway: 0
+                sentOffHome: 0, sentOffAway: 0,
+                onFinish
             };
+        }
+
+        function loadFinishedSimState(home, away, snap, hVal, aVal) {
+            if (snap) {
+                return {
+                    home, away,
+                    minute: snap.minute, half: snap.half,
+                    hGoals: snap.hGoals, aGoals: snap.aGoals,
+                    log: snap.log.slice(),
+                    playing: false, finished: true, started: true, speed: 1,
+                    stoppage1: snap.stoppage1, stoppage2: snap.stoppage2,
+                    accumMs: 0, subsDone: { ...snap.subsDone },
+                    cardsHome: { ...snap.cardsHome }, cardsAway: { ...snap.cardsAway },
+                    sentOffHome: snap.sentOffHome, sentOffAway: snap.sentOffAway,
+                    onFinish: null
+                };
+            }
+            return {
+                home, away,
+                minute: 0, half: 2, hGoals: hVal, aGoals: aVal,
+                log: [{ minute: 'FIN', icon: 'full', text: `Resultado: ${home.name} ${hVal} - ${aVal} ${away.name}. (Sin minuto a minuto: fue capturado manualmente o con simulación rápida.)` }],
+                playing: false, finished: true, started: true, speed: 1,
+                stoppage1: 0, stoppage2: 0, accumMs: 0, subsDone: { h: 3, a: 3 },
+                cardsHome: {}, cardsAway: {}, sentOffHome: 0, sentOffAway: 0,
+                onFinish: null
+            };
+        }
+
+        function openSimulation(match, home, away, forceRestart) {
+            if (!forceRestart && match.hScore !== '' && match.aScore !== '') {
+                simState = loadFinishedSimState(home, away, match._sim, match.hScore, match.aScore);
+                simState.match = match;
+                simState.kind = 'match';
+                simScrollY = 0;
+                return;
+            }
+            simState = buildSimState(home, away, (s, snap) => {
+                match.hScore = s.hGoals; match.aScore = s.aGoals; match._sim = snap;
+                calculateStats();
+            });
+            simState.match = match;
+            simState.kind = 'match';
+            simScrollY = 0;
+        }
+
+        // Ida y vuelta de la liguilla: cada llave guarda su propio historial minuto a
+        // minuto de forma independiente (_simIda / _simVuelta).
+        function legFields(leg) { return leg === 'ida' ? { h: 'ida1', a: 'ida2' } : { h: 'vue2', a: 'vue1' }; }
+        function legSimKey(leg) { return leg === 'ida' ? '_simIda' : '_simVuelta'; }
+
+        function openLegSimulation(match, leg, isFinal, forceRestart) {
+            let homeTeam = leg === 'ida' ? match.t1 : match.t2;
+            let awayTeam = leg === 'ida' ? match.t2 : match.t1;
+            let f = legFields(leg);
+            let simKey = legSimKey(leg);
+            let played = match[f.h] !== '' && match[f.a] !== '';
+
+            if (!forceRestart && played) {
+                simState = loadFinishedSimState(homeTeam, awayTeam, match[simKey], match[f.h], match[f.a]);
+                simState.legMatch = match; simState.leg = leg; simState.isFinal = isFinal;
+                simState.kind = 'leg';
+                simScrollY = 0;
+                return;
+            }
+            simState = buildSimState(homeTeam, awayTeam, (s, snap) => {
+                match[f.h] = s.hGoals; match[f.a] = s.aGoals; match[simKey] = snap;
+                match.winner = calculateWinner(match, isFinal);
+                checkLiguillaProgress();
+            });
+            simState.legMatch = match; simState.leg = leg; simState.isFinal = isFinal;
+            simState.kind = 'leg';
             simScrollY = 0;
         }
 
@@ -1312,7 +1383,7 @@
                 let goalProb = Math.max(0.05, Math.min(0.30, 0.10 + (myAtk - rivalDef) * 0.09));
                 let r2 = Math.random();
                 if (r2 < goalProb) {
-                    let assist = randPlayer(team, Math.random() < 0.5 ? 'Mediocampistas' : 'Delanteros');
+                    let assist = randPlayer(team, Math.random() < 0.5 ? 'Mediocampistas' : 'Delanteros', new Set([shooter.name]));
                     if (isHome) s.hGoals++; else s.aGoals++;
                     let gType = rollGoalType();
                     addSimLog(s, 'goal', GOAL_TEXT[gType](team, shooter, assist));
@@ -1343,15 +1414,13 @@
                 addSimLog(s, 'full', 'Final del partido.');
                 s.finished = true;
                 s.playing = false;
-                s.match.hScore = s.hGoals;
-                s.match.aScore = s.aGoals;
-                s.match._sim = {
+                let snapshot = {
                     minute: s.minute, half: s.half, hGoals: s.hGoals, aGoals: s.aGoals,
                     log: s.log.slice(), stoppage1: s.stoppage1, stoppage2: s.stoppage2,
                     subsDone: { ...s.subsDone }, cardsHome: { ...s.cardsHome }, cardsAway: { ...s.cardsAway },
                     sentOffHome: s.sentOffHome, sentOffAway: s.sentOffAway
                 };
-                calculateStats();
+                if (typeof s.onFinish === 'function') s.onFinish(s, snapshot);
                 return;
             }
 
@@ -1385,6 +1454,21 @@
             half: () => THEME.accent,
             full: () => THEME.accent,
             kick: () => THEME.accent
+        };
+
+        const SIM_ICON_GLYPH = {
+            goal: '⚽',
+            yellow: '🟨',
+            red: '🟥',
+            foul: '⚑',
+            corner: '⌐',
+            save: '🧤',
+            shot: '↗',
+            chance: '→',
+            sub: '⇄',
+            half: '⏸',
+            full: '⏹',
+            kick: '▶'
         };
 
         function renderSimOverlay() {
@@ -1432,37 +1516,41 @@
                 y += 8;
             }
 
-            // Marcador
-            drawBadge(s.home, padX + 30, y + 20, 24);
-            drawText(s.home.name.toUpperCase(), padX + 30, y + 54, THEME.text, 11, 'center', '600');
-            drawBadge(s.away, padX + contentW - 30, y + 20, 24);
-            drawText(s.away.name.toUpperCase(), padX + contentW - 30, y + 54, THEME.text, 11, 'center', '600');
-            drawText(`${s.hGoals}`, vw / 2 - 26, y + 20, THEME.text, 30, 'center', '800', THEME.fontDisplay);
-            drawText('-', vw / 2, y + 20, THEME.textMuted, 22, 'center', '600');
-            drawText(`${s.aGoals}`, vw / 2 + 26, y + 20, THEME.text, 30, 'center', '800', THEME.fontDisplay);
+            // Marcador dentro de una tarjeta con franja de color de cada equipo
+            let scoreCardH = 92;
+            drawRect(padX, y, contentW, scoreCardH, THEME.card, 6);
+            strokeRect(padX, y, contentW, scoreCardH, THEME.border, 1, 6);
+            drawRect(padX, y, 4, scoreCardH, s.home.c1, 0);
+            drawRect(padX + contentW - 4, y, 4, scoreCardH, s.away.c1, 0);
 
-            y += 78;
-            strokeRect(padX, y, contentW, 1, THEME.border);
-            y += 14;
+            drawBadge(s.home, padX + 46, y + 34, 22);
+            drawText(s.home.name.toUpperCase(), padX + 46, y + 68, THEME.text, 10.5, 'center', '600');
+            drawBadge(s.away, padX + contentW - 46, y + 34, 22);
+            drawText(s.away.name.toUpperCase(), padX + contentW - 46, y + 68, THEME.text, 10.5, 'center', '600');
+            drawText(`${s.hGoals}`, vw / 2 - 24, y + 34, THEME.text, 32, 'center', '800', THEME.fontDisplay);
+            drawText('-', vw / 2, y + 34, THEME.textMuted, 20, 'center', '600');
+            drawText(`${s.aGoals}`, vw / 2 + 24, y + 34, THEME.text, 32, 'center', '800', THEME.fontDisplay);
+
+            y += scoreCardH + 16;
 
             if (!s.started && !s.finished) {
                 // Pantalla previa al partido: el usuario decide cuándo arranca
                 let boxH = 120;
-                drawRect(padX, y + 20, contentW, boxH, THEME.card, 4);
-                strokeRect(padX, y + 20, contentW, boxH, THEME.border, 1, 4);
-                drawText('El partido está listo para comenzar.', padX + contentW / 2, y + 50, THEME.textMuted, 12, 'center', '500');
+                drawRect(padX, y, contentW, boxH, THEME.card, 5);
+                strokeRect(padX, y, contentW, boxH, THEME.border, 1, 5);
+                drawText('El partido está listo para comenzar.', padX + contentW / 2, y + 30, THEME.textMuted, 12, 'center', '500');
 
                 let btnW = 220, btnH2 = 46;
                 let btnX = padX + contentW / 2 - btnW / 2;
-                let btnY2 = y + 74;
+                let btnY2 = y + 54;
                 let hoverStart = hoveredId === 'sim_start';
-                drawRect(btnX, btnY2, btnW, btnH2, hoverStart ? '#dab873' : THEME.accent, 3);
+                drawRect(btnX, btnY2, btnW, btnH2, hoverStart ? '#dab873' : THEME.accent, 4);
                 drawText('▶  INICIAR PARTIDO', btnX + btnW / 2, btnY2 + btnH2 / 2, '#0a0d12', 13, 'center', '700');
                 addHitbox(btnX, btnY2, btnW, btnH2, 'sim_start', () => { startSimulationNow(); });
                 return;
             }
 
-            // Log de eventos con scroll propio
+            // Log de eventos con scroll propio, con franja e ícono según el tipo de jugada
             let logTop = y;
             let logBottom = vh - 66;
             ctx.save();
@@ -1472,18 +1560,23 @@
 
             let rowY = logTop + simScrollY;
             s.log.forEach(ev => {
-                let rowH = 44;
+                let rowH = 46;
                 if (rowY + rowH > logTop - 60 && rowY < logBottom + 60) {
-                    drawRect(padX, rowY, contentW, rowH - 4, THEME.card, 3);
-                    strokeRect(padX, rowY, contentW, rowH - 4, THEME.border, 1, 3);
                     let iconColor = (SIM_ICON_COLOR[ev.icon] || (() => THEME.textMuted))();
-                    drawText(`${ev.minute}'`, padX + 14, rowY + (rowH - 4) / 2, iconColor, 11, 'left', '700');
+                    let isGoal = ev.icon === 'goal';
+                    drawRect(padX, rowY, contentW, rowH - 5, isGoal ? THEME.accentSoft : THEME.card, 4);
+                    strokeRect(padX, rowY, contentW, rowH - 5, isGoal ? THEME.accent : THEME.border, isGoal ? 1.2 : 1, 4);
+                    drawRect(padX, rowY, 3, rowH - 5, iconColor, 0);
+
+                    let glyph = SIM_ICON_GLYPH[ev.icon] || '•';
+                    drawText(glyph, padX + 24, rowY + (rowH - 5) / 2, iconColor, 14, 'center', '700');
+                    drawText(`${ev.minute}'`, padX + 46, rowY + (rowH - 5) / 2, THEME.textMuted, 10, 'left', '700');
                     ctx.save();
-                    ctx.font = "500 12px 'Inter', sans-serif";
+                    ctx.font = (isGoal ? "700 " : "500 ") + "12px 'Inter', sans-serif";
                     ctx.fillStyle = THEME.text;
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
-                    let maxTextW = contentW - 70;
+                    let maxTextW = contentW - 82;
                     let words = ev.text.split(' ');
                     let line = '';
                     let lines = [];
@@ -1495,8 +1588,8 @@
                     if (line) lines.push(line);
                     lines = lines.slice(0, 2);
                     let lineH = 15;
-                    let startTy = rowY + (rowH - 4) / 2 - ((lines.length - 1) * lineH) / 2;
-                    lines.forEach((ln, li) => ctx.fillText(ln, padX + 52, startTy + li * lineH));
+                    let startTy = rowY + (rowH - 5) / 2 - ((lines.length - 1) * lineH) / 2;
+                    lines.forEach((ln, li) => ctx.fillText(ln, padX + 70, startTy + li * lineH));
                     ctx.restore();
                 }
                 rowY += rowH;
@@ -1510,18 +1603,23 @@
             let btnH = 40;
             let btns = [
                 { id: 'sim_restart', label: 'REINICIAR' },
-                { id: 'sim_toggle', label: s.finished ? 'VER TABLA' : (s.playing ? 'PAUSAR' : 'CONTINUAR') },
+                { id: 'sim_toggle', label: s.finished ? 'CERRAR' : (s.playing ? '⏸ PAUSAR' : '▶ CONTINUAR'), primary: !s.finished },
                 { id: 'sim_back2', label: 'IR ATRÁS' }
             ];
             let bw = contentW / btns.length;
             btns.forEach((b, i) => {
                 let bx = padX + i * bw;
                 let hover = hoveredId === b.id;
-                drawRect(bx, btnY, bw - 4, btnH, hover ? THEME.cardHover : THEME.card, 3);
-                strokeRect(bx, btnY, bw - 4, btnH, THEME.border, 1, 3);
-                drawText(b.label, bx + (bw - 4) / 2, btnY + btnH / 2, hover ? THEME.accent : THEME.text, 10.5, 'center', '700');
+                let bg = b.primary ? (hover ? '#dab873' : THEME.accent) : (hover ? THEME.cardHover : THEME.card);
+                let fg = b.primary ? '#0a0d12' : (hover ? THEME.accent : THEME.text);
+                drawRect(bx, btnY, bw - 4, btnH, bg, 4);
+                if (!b.primary) strokeRect(bx, btnY, bw - 4, btnH, THEME.border, 1, 4);
+                drawText(b.label, bx + (bw - 4) / 2, btnY + btnH / 2, fg, 10.5, 'center', '700');
                 addHitbox(bx, btnY, bw - 4, btnH, b.id, () => {
-                    if (b.id === 'sim_restart') { openSimulation(s.match, s.home, s.away, true); }
+                    if (b.id === 'sim_restart') {
+                        if (s.kind === 'leg') openLegSimulation(s.legMatch, s.leg, s.isFinal, true);
+                        else openSimulation(s.match, s.home, s.away, true);
+                    }
                     else if (b.id === 'sim_toggle') {
                         if (s.finished) { closeSimulation(); }
                         else { s.playing = !s.playing; }
