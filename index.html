@@ -69,16 +69,31 @@
         // Logo oficial de la liga, usado en la portada y en el encabezado
         const LEAGUE_ICON_DIR = './LigaMXIcon/';
         let leagueLogoImg = new Image();
+        // Si el logo se ve chico dentro de su cuadro (mucho margen transparente en el PNG),
+        // sube este número (p. ej. 1.3, 1.5) para acercar el zoom, igual que con los escudos.
+        const LEAGUE_LOGO_SCALE = 1.25;
         function loadLeagueLogo() { leagueLogoImg.src = LEAGUE_ICON_DIR + 'LigaMx.png'; }
 
-        // Dibuja el logo de la liga en un cuadro de tamaño fijo; si aún no carga, no dibuja nada
+        // Dibuja el logo de la liga en un cuadro de tamaño fijo, con un fondo neutro
+        // detrás (igual que los escudos) para que se vea limpio sin importar si el PNG
+        // tiene fondo transparente, blanco o de otro color.
         function drawLeagueLogo(x, y, size) {
             if (leagueLogoImg && leagueLogoImg.complete && leagueLogoImg.naturalWidth > 0) {
-                let scale = Math.min(size / leagueLogoImg.naturalWidth, size / leagueLogoImg.naturalHeight);
+                ctx.save();
+                ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(x - size / 2, y - size / 2, size, size, 6);
+                else ctx.rect(x - size / 2, y - size / 2, size, size);
+                ctx.clip();
+                drawRect(x - size / 2, y - size / 2, size, size, '#f4f5f7', 0);
+                let pad = size * 0.1;
+                let boxW = size - pad, boxH = size - pad;
+                let scale = Math.min(boxW / leagueLogoImg.naturalWidth, boxH / leagueLogoImg.naturalHeight) * LEAGUE_LOGO_SCALE;
                 let dw = leagueLogoImg.naturalWidth * scale, dh = leagueLogoImg.naturalHeight * scale;
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(leagueLogoImg, x - dw / 2, y - dh / 2, dw, dh);
+                ctx.restore();
+                strokeRect(x - size / 2, y - size / 2, size, size, 'rgba(255,255,255,0.14)', 1, 6);
                 return true;
             }
             return false;
@@ -115,6 +130,8 @@
         // centrado en (x,y). Usa el PNG de InGameIcons si ya cargó; si no, cae al emoji.
         function drawEventIcon(type, x, y, size, color) {
             let img = eventIconImgs[type];
+            let plateR = size / 2 + 3;
+            drawRect(x - plateR, y - plateR, plateR * 2, plateR * 2, 'rgba(255,255,255,0.05)', 5);
             if (img && img.complete && img.naturalWidth > 0) {
                 let scale = Math.min(size / img.naturalWidth, size / img.naturalHeight);
                 let dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
@@ -123,8 +140,100 @@
                 ctx.drawImage(img, x - dw / 2, y - dh / 2, dw, dh);
                 return;
             }
-            let glyph = SIM_ICON_GLYPH[type] || '•';
-            drawText(glyph, x, y + 1, color, size * 0.78, 'center', '700');
+            drawVectorIcon(type, x, y, size, color);
+        }
+
+        // Íconos vectoriales de respaldo: se dibujan con formas simples (no emoji), así
+        // siempre se ven del mismo tamaño y estilo sin importar el dispositivo del usuario.
+        function drawVectorIcon(type, x, y, size, color) {
+            let r = size / 2;
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = Math.max(1.4, size * 0.11);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            switch (type) {
+                case 'goal': {
+                    ctx.beginPath(); ctx.arc(x, y, r * 0.62, 0, Math.PI * 2); ctx.fill();
+                    break;
+                }
+                case 'yellow':
+                case 'red': {
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(x - r * 0.42, y - r * 0.62, r * 0.84, r * 1.24, 1.5);
+                    else ctx.rect(x - r * 0.42, y - r * 0.62, r * 0.84, r * 1.24);
+                    ctx.fill();
+                    break;
+                }
+                case 'foul': {
+                    ctx.beginPath();
+                    ctx.moveTo(x - r * 0.35, y - r * 0.6); ctx.lineTo(x - r * 0.35, y + r * 0.6);
+                    ctx.moveTo(x - r * 0.35, y - r * 0.55); ctx.lineTo(x + r * 0.4, y - r * 0.28); ctx.lineTo(x - r * 0.35, y - r * 0.05);
+                    ctx.stroke();
+                    break;
+                }
+                case 'corner': {
+                    ctx.beginPath();
+                    ctx.moveTo(x - r * 0.4, y - r * 0.6); ctx.lineTo(x - r * 0.4, y + r * 0.6);
+                    ctx.moveTo(x - r * 0.4, y - r * 0.55); ctx.lineTo(x + r * 0.35, y - r * 0.55); ctx.lineTo(x - r * 0.05, y - r * 0.15); ctx.closePath();
+                    ctx.fill();
+                    break;
+                }
+                case 'save': {
+                    ctx.beginPath();
+                    ctx.moveTo(x - r * 0.55, y + r * 0.1);
+                    ctx.quadraticCurveTo(x - r * 0.55, y - r * 0.6, x, y - r * 0.6);
+                    ctx.quadraticCurveTo(x + r * 0.55, y - r * 0.6, x + r * 0.55, y + r * 0.1);
+                    ctx.lineTo(x + r * 0.3, y + r * 0.55);
+                    ctx.lineTo(x - r * 0.3, y + r * 0.55);
+                    ctx.closePath();
+                    ctx.stroke();
+                    break;
+                }
+                case 'shot': {
+                    ctx.beginPath();
+                    ctx.moveTo(x - r * 0.5, y + r * 0.55); ctx.lineTo(x + r * 0.5, y - r * 0.55);
+                    ctx.moveTo(x - r * 0.05, y - r * 0.55); ctx.lineTo(x + r * 0.5, y - r * 0.55); ctx.lineTo(x + r * 0.5, y - r * 0.05);
+                    ctx.stroke();
+                    break;
+                }
+                case 'chance': {
+                    ctx.beginPath();
+                    ctx.moveTo(x - r * 0.5, y); ctx.lineTo(x + r * 0.35, y);
+                    ctx.moveTo(x + r * 0.1, y - r * 0.35); ctx.lineTo(x + r * 0.5, y); ctx.lineTo(x + r * 0.1, y + r * 0.35);
+                    ctx.stroke();
+                    break;
+                }
+                case 'offside': {
+                    ctx.beginPath();
+                    ctx.moveTo(x - r * 0.4, y + r * 0.6); ctx.lineTo(x - r * 0.4, y - r * 0.6);
+                    ctx.moveTo(x - r * 0.4, y - r * 0.55); ctx.lineTo(x + r * 0.4, y - r * 0.35); ctx.lineTo(x - r * 0.4, y - r * 0.15); ctx.closePath();
+                    ctx.fill();
+                    break;
+                }
+                case 'sub': {
+                    ctx.beginPath();
+                    ctx.moveTo(x - r * 0.15, y - r * 0.55); ctx.lineTo(x - r * 0.15, y + r * 0.25);
+                    ctx.moveTo(x - r * 0.4, y + r * 0.0); ctx.lineTo(x - r * 0.15, y + r * 0.3); ctx.lineTo(x + r * 0.1, y + r * 0.0);
+                    ctx.moveTo(x + r * 0.2, y + r * 0.55); ctx.lineTo(x + r * 0.2, y - r * 0.25);
+                    ctx.moveTo(x - r * 0.05, y - r * 0.0); ctx.lineTo(x + r * 0.2, y - r * 0.3); ctx.lineTo(x + r * 0.45, y - r * 0.0);
+                    ctx.stroke();
+                    break;
+                }
+                case 'half':
+                case 'full':
+                case 'kick':
+                default: {
+                    ctx.beginPath(); ctx.arc(x, y, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+                    if (type === 'kick') { ctx.beginPath(); ctx.moveTo(x - r * 0.2, y - r * 0.28); ctx.lineTo(x - r * 0.2, y + r * 0.28); ctx.lineTo(x + r * 0.3, y); ctx.closePath(); ctx.fill(); }
+                    else if (type === 'full') { ctx.fillRect(x - r * 0.22, y - r * 0.22, r * 0.44, r * 0.44); }
+                    else { ctx.fillRect(x - r * 0.28, y - r * 0.22, r * 0.18, r * 0.44); ctx.fillRect(x + r * 0.1, y - r * 0.22, r * 0.18, r * 0.44); }
+                    break;
+                }
+            }
+            ctx.restore();
         }
 
         // Mazatlán fue sustituido por Atlante en el torneo
@@ -1147,7 +1256,11 @@
                 total += w;
                 return w;
             });
-            if (total <= 0) return arr[0];
+            if (total <= 0) {
+                // Si excluir dejó todo en 0 (plantilla muy corta), igual respetamos la exclusión
+                let remaining = excludeNames ? arr.filter(p => !excludeNames.has(p.name)) : arr;
+                return remaining.length ? remaining[0] : arr[0];
+            }
             let r = Math.random() * total;
             for (let i = 0; i < arr.length; i++) {
                 r -= weights[i];
@@ -1408,6 +1521,18 @@
             addSimLog(simState, 'kick', `Arranca el partido: ${simState.home.name} vs ${simState.away.name}.`);
         }
 
+        // Elige un sustituto que nunca puede ser el mismo jugador que sale: prueba varias
+        // categorías por si el equipo tiene muy pocos jugadores en una posición.
+        function pickSubstitute(team, excludeName) {
+            let cats = ['Mediocampistas', 'Delanteros', 'Defensores'];
+            for (let c of cats) {
+                let arr = (team.rosterKey && ligaMX[team.rosterKey] && ligaMX[team.rosterKey][c]) || [];
+                let candidates = arr.filter(p => p.name !== excludeName);
+                if (candidates.length > 0) return pickWeighted(candidates, playerImportance) || candidates[0];
+            }
+            return { name: 'Jugador' };
+        }
+
         function maybeSubstitution(s, side) {
             let team = side === 'h' ? s.home : s.away;
             if (s.subsDone[side] >= 3) return;
@@ -1416,7 +1541,7 @@
             if (Math.random() > 0.6) return;
             s.subsDone[side]++;
             let out = randPlayer(team, Math.random() < 0.5 ? 'Delanteros' : 'Mediocampistas');
-            let inRoster = randPlayer(team, Math.random() < 0.5 ? 'Mediocampistas' : 'Delanteros');
+            let inRoster = pickSubstitute(team, out.name);
             addSimLog(s, 'sub', pick(SUB_TXT)(team, inRoster, out));
         }
 
