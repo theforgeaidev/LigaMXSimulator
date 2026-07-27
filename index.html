@@ -65,6 +65,48 @@
         };
         const ICON_DIR = './LigaMXTeamIcons/';
 
+        // Iconos de eventos del partido en vivo. Si el archivo no existe o no carga,
+        // se usa automáticamente el emoji equivalente como respaldo (mismo tamaño siempre).
+        const EVENT_ICON_DIR = './InGameIcons/';
+        const EVENT_ICON_FILES = {
+            yellow: 'YellowCard.png',
+            red: 'RedCard.png',
+            goal: 'Goal.png',
+            sub: 'Substitution.png',
+            corner: 'Corner.png',
+            foul: 'Foul.png',
+            save: 'Save.png',
+            shot: 'Shot.png',
+            chance: 'Chance.png',
+            half: 'Whistle.png',
+            full: 'Whistle.png',
+            kick: 'Whistle.png'
+        };
+        let eventIconImgs = {};
+        function loadEventIcons() {
+            Object.keys(EVENT_ICON_FILES).forEach(key => {
+                let img = new Image();
+                img.src = EVENT_ICON_DIR + EVENT_ICON_FILES[key];
+                eventIconImgs[key] = img;
+            });
+        }
+
+        // Dibuja el ícono de un evento del log en un cuadro de tamaño fijo `size`,
+        // centrado en (x,y). Usa el PNG de InGameIcons si ya cargó; si no, cae al emoji.
+        function drawEventIcon(type, x, y, size, color) {
+            let img = eventIconImgs[type];
+            if (img && img.complete && img.naturalWidth > 0) {
+                let scale = Math.min(size / img.naturalWidth, size / img.naturalHeight);
+                let dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, x - dw / 2, y - dh / 2, dw, dh);
+                return;
+            }
+            let glyph = SIM_ICON_GLYPH[type] || '•';
+            drawText(glyph, x, y + 1, color, size * 0.78, 'center', '700');
+        }
+
         // Mazatlán fue sustituido por Atlante en el torneo
         const TEAMS = [
             { id: 1, name: 'América', short: 'AME', c1: '#F5E97D', c2: '#0F2148' },
@@ -221,6 +263,18 @@
             ctx.textAlign = align;
             ctx.textBaseline = 'middle';
             ctx.fillText(text, x, y);
+        }
+
+        // Esquinas tipo "HUD" para darle un acabado más premium a los paneles clave
+        function drawCornerBrackets(x, y, w, h, color, len = 14) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(x, y + len); ctx.lineTo(x, y); ctx.lineTo(x + len, y);
+            ctx.moveTo(x + w - len, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + len);
+            ctx.moveTo(x, y + h - len); ctx.lineTo(x, y + h); ctx.lineTo(x + len, y + h);
+            ctx.moveTo(x + w - len, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - len);
+            ctx.stroke();
         }
 
         function drawBadge(team, x, y, r) {
@@ -409,15 +463,22 @@
                 ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(vw, ly); ctx.stroke();
             }
 
-            let titleY = vh / 2 - 50;
-            drawText("LIGA MX", vw / 2, titleY, THEME.text, vw < 500 ? 46 : 68, 'center', '700', THEME.fontDisplay);
-            drawText("CENTRO DE PARTIDOS", vw / 2, titleY + (vw < 500 ? 34 : 46), THEME.accent, vw < 500 ? 13 : 15, 'center', '600');
-            strokeRect(vw / 2 - 30, titleY + (vw < 500 ? 50 : 64), 60, 1, THEME.border, 1);
-            drawText("Simulador de jornadas, tabla general y liguilla", vw / 2, titleY + (vw < 500 ? 78 : 96), THEME.textMuted, 12, 'center', '400');
+            let panelW = Math.min(vw - 40, 560);
+            let panelH = vw < 500 ? 300 : 340;
+            let panelX = vw / 2 - panelW / 2;
+            let panelY = vh / 2 - panelH / 2 - 20;
+            strokeRect(panelX, panelY, panelW, panelH, THEME.border, 1, 6);
+            drawCornerBrackets(panelX, panelY, panelW, panelH, THEME.accent, 16);
+
+            let titleY = panelY + panelH / 2 - 30;
+            drawText("LIGA MX", vw / 2, titleY, THEME.text, vw < 500 ? 42 : 62, 'center', '700', THEME.fontDisplay);
+            drawText("C E N T R O   D E   P A R T I D O S", vw / 2, titleY + (vw < 500 ? 32 : 42), THEME.accent, vw < 500 ? 11 : 13, 'center', '600');
+            strokeRect(vw / 2 - 30, titleY + (vw < 500 ? 48 : 60), 60, 1, THEME.border, 1);
+            drawText("Simulador de jornadas, tabla general y liguilla", vw / 2, titleY + (vw < 500 ? 74 : 90), THEME.textMuted, 12, 'center', '400');
 
             let btnW = 200, btnH = 50;
             let btnX = vw / 2 - btnW / 2;
-            let btnY = vh / 2 + 110;
+            let btnY = panelY + panelH + 34;
             let isHover = hoveredId === 'start_app';
 
             drawRect(btnX, btnY, btnW, btnH, isHover ? '#dab873' : THEME.accent, 3);
@@ -576,19 +637,19 @@
                 let inputW = 36, inputH = 38;
                 let hHasScore = m.hScore !== '';
                 let hHover = hoveredId === `hsc_${idx}`;
-                drawRect(midX - 24, y + (rowH - inputH) / 2, inputW, inputH, hHover ? THEME.cardHover : THEME.bgDark, 3);
-                strokeRect(midX - 24, y + (rowH - inputH) / 2, inputW, inputH, hHasScore ? THEME.accent : (hHover ? THEME.borderHover : THEME.border), hHasScore ? 1.5 : 1, 3);
-                drawText(hHasScore ? m.hScore : '–', midX - 24 + inputW / 2, y + rowH / 2, hHasScore ? THEME.text : THEME.textMuted, 16, 'center', '700');
-                addHitbox(midX - 24, y + (rowH - inputH) / 2, inputW, inputH, `hsc_${idx}`, (screenBox) => { openScoreInput(screenBox, m, 'hScore', () => calculateStats()); });
+                drawRect(midX - 30, y + (rowH - inputH) / 2, inputW, inputH, hHover ? THEME.cardHover : THEME.bgDark, 3);
+                strokeRect(midX - 30, y + (rowH - inputH) / 2, inputW, inputH, hHasScore ? THEME.accent : (hHover ? THEME.borderHover : THEME.border), hHasScore ? 1.5 : 1, 3);
+                drawText(hHasScore ? m.hScore : '–', midX - 30 + inputW / 2, y + rowH / 2, hHasScore ? THEME.text : THEME.textMuted, 16, 'center', '700');
+                addHitbox(midX - 30, y + (rowH - inputH) / 2, inputW, inputH, `hsc_${idx}`, (screenBox) => { openScoreInput(screenBox, m, 'hScore', () => calculateStats()); });
 
                 drawText("VS", midX + 20, y + rowH / 2, THEME.textMuted, 10, 'center', '600');
 
                 let aHasScore = m.aScore !== '';
                 let aHover = hoveredId === `asc_${idx}`;
-                drawRect(midX + 28, y + (rowH - inputH) / 2, inputW, inputH, aHover ? THEME.cardHover : THEME.bgDark, 3);
-                strokeRect(midX + 28, y + (rowH - inputH) / 2, inputW, inputH, aHasScore ? THEME.accent : (aHover ? THEME.borderHover : THEME.border), aHasScore ? 1.5 : 1, 3);
-                drawText(aHasScore ? m.aScore : '–', midX + 28 + inputW / 2, y + rowH / 2, aHasScore ? THEME.text : THEME.textMuted, 16, 'center', '700');
-                addHitbox(midX + 28, y + (rowH - inputH) / 2, inputW, inputH, `asc_${idx}`, (screenBox) => { openScoreInput(screenBox, m, 'aScore', () => calculateStats()); });
+                drawRect(midX + 34, y + (rowH - inputH) / 2, inputW, inputH, aHover ? THEME.cardHover : THEME.bgDark, 3);
+                strokeRect(midX + 34, y + (rowH - inputH) / 2, inputW, inputH, aHasScore ? THEME.accent : (aHover ? THEME.borderHover : THEME.border), aHasScore ? 1.5 : 1, 3);
+                drawText(aHasScore ? m.aScore : '–', midX + 34 + inputW / 2, y + rowH / 2, aHasScore ? THEME.text : THEME.textMuted, 16, 'center', '700');
+                addHitbox(midX + 34, y + (rowH - inputH) / 2, inputW, inputH, `asc_${idx}`, (screenBox) => { openScoreInput(screenBox, m, 'aScore', () => calculateStats()); });
 
                 drawBadge(tA, midX + 95, y + rowH / 2, 14);
                 drawText(isMobile ? tA.short : tA.name.toUpperCase(), midX + 123, y + rowH / 2, THEME.text, 13, 'left', '600');
@@ -1098,15 +1159,15 @@
         function teamRating(team, mode) {
             let pts = RANKING_POINTS[team.name] || (RANK_MIN + RANK_MAX) / 2;
             let power = (pts - RANK_MIN) / (RANK_MAX - RANK_MIN); // 0 (más flojo) .. 1 (más fuerte)
-            let atkBase = 1.15 + power * 0.55;   // equipos de mayor ranking atacan mejor
-            let defBase = 1.70 - power * 0.55;   // y conceden menos
+            let atkBase = 0.75 + power * 1.35;   // rango amplio: el ranking sí se nota
+            let defBase = 2.10 - power * 1.35;   // los equipos fuertes conceden bastante menos
             let base = mode === 'atk' ? atkBase : defBase;
 
             let stat = teamStats.find(t => t.id === team.id);
             if (stat && stat.pld > 0) {
                 // El rendimiento real del torneo pesa más, pero el ranking sigue influyendo
-                if (mode === 'atk') return (stat.gf / stat.pld) * 0.6 + base * 0.4;
-                return (stat.ga / stat.pld) * 0.6 + base * 0.4;
+                if (mode === 'atk') return (stat.gf / stat.pld) * 0.55 + base * 0.45;
+                return (stat.ga / stat.pld) * 0.55 + base * 0.45;
             }
             return base;
         }
@@ -1198,12 +1259,12 @@
         // Entre más espectacular el tipo de gol, mucho menos probable (la chilena es rarísima)
         function rollGoalType() {
             let r = Math.random();
-            if (r < 0.006) return 'chilena';
-            if (r < 0.018) return 'campanita';
-            if (r < 0.05) return 'palomita';
-            if (r < 0.16) return 'cabezazo';
-            if (r < 0.24) return 'larga';
-            if (r < 0.30) return 'penal';
+            if (r < 0.0006) return 'chilena';    // ~1 cada ~1,700 goles: casi imposible
+            if (r < 0.004) return 'campanita';   // muy poco común
+            if (r < 0.02) return 'palomita';
+            if (r < 0.13) return 'cabezazo';
+            if (r < 0.20) return 'larga';
+            if (r < 0.27) return 'penal';
             return 'normal';
         }
         const CHANCE_TXT = [
@@ -1364,7 +1425,7 @@
 
             if (Math.random() > 0.30) return; // no todos los minutos tienen jugada
 
-            let homeChance = atkH / (atkH + atkA * 0.9);
+            let homeChance = (atkH * 1.12) / (atkH * 1.12 + atkA);
             let isHome = Math.random() < homeChance;
             let team = isHome ? s.home : s.away;
             let rival = isHome ? s.away : s.home;
@@ -1380,7 +1441,7 @@
             } else if (roll < 0.86) {
                 let shooter = randPlayer(team, Math.random() < 0.72 ? 'Delanteros' : 'Mediocampistas');
                 let gkp = randPlayer(rival, 'Arqueros');
-                let goalProb = Math.max(0.05, Math.min(0.30, 0.10 + (myAtk - rivalDef) * 0.09));
+                let goalProb = Math.max(0.035, Math.min(0.34, 0.11 + (myAtk - rivalDef) * 0.14));
                 let r2 = Math.random();
                 if (r2 < goalProb) {
                     let assist = randPlayer(team, Math.random() < 0.5 ? 'Mediocampistas' : 'Delanteros', new Set([shooter.name]));
@@ -1520,6 +1581,7 @@
             let scoreCardH = 92;
             drawRect(padX, y, contentW, scoreCardH, THEME.card, 6);
             strokeRect(padX, y, contentW, scoreCardH, THEME.border, 1, 6);
+            drawCornerBrackets(padX, y, contentW, scoreCardH, THEME.accent, 12);
             drawRect(padX, y, 4, scoreCardH, s.home.c1, 0);
             drawRect(padX + contentW - 4, y, 4, scoreCardH, s.away.c1, 0);
 
@@ -1560,23 +1622,29 @@
 
             let rowY = logTop + simScrollY;
             s.log.forEach(ev => {
-                let rowH = 46;
+                let rowH = 48;
                 if (rowY + rowH > logTop - 60 && rowY < logBottom + 60) {
                     let iconColor = (SIM_ICON_COLOR[ev.icon] || (() => THEME.textMuted))();
                     let isGoal = ev.icon === 'goal';
-                    drawRect(padX, rowY, contentW, rowH - 5, isGoal ? THEME.accentSoft : THEME.card, 4);
-                    strokeRect(padX, rowY, contentW, rowH - 5, isGoal ? THEME.accent : THEME.border, isGoal ? 1.2 : 1, 4);
-                    drawRect(padX, rowY, 3, rowH - 5, iconColor, 0);
+                    let rh = rowH - 6;
+                    drawRect(padX, rowY, contentW, rh, isGoal ? THEME.accentSoft : THEME.card, 4);
+                    strokeRect(padX, rowY, contentW, rh, isGoal ? THEME.accent : THEME.border, isGoal ? 1.2 : 1, 4);
+                    drawRect(padX, rowY, 3, rh, iconColor, 0);
 
-                    let glyph = SIM_ICON_GLYPH[ev.icon] || '•';
-                    drawText(glyph, padX + 24, rowY + (rowH - 5) / 2, iconColor, 14, 'center', '700');
-                    drawText(`${ev.minute}'`, padX + 46, rowY + (rowH - 5) / 2, THEME.textMuted, 10, 'left', '700');
+                    // Columna de ícono: tamaño fijo, usa PNG de InGameIcons si está disponible
+                    drawEventIcon(ev.icon, padX + 26, rowY + rh / 2, 18, iconColor);
+
+                    // Columna de minuto: ancho fijo alineado a la derecha, nunca choca con el texto
+                    drawText(`${ev.minute}'`, padX + 66, rowY + rh / 2, THEME.textMuted, 10, 'right', '700');
+
+                    // Columna de descripción: siempre empieza en el mismo punto fijo
+                    let textX = padX + 78;
                     ctx.save();
                     ctx.font = (isGoal ? "700 " : "500 ") + "12px 'Inter', sans-serif";
                     ctx.fillStyle = THEME.text;
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
-                    let maxTextW = contentW - 82;
+                    let maxTextW = contentW - (textX - padX) - 14;
                     let words = ev.text.split(' ');
                     let line = '';
                     let lines = [];
@@ -1588,8 +1656,8 @@
                     if (line) lines.push(line);
                     lines = lines.slice(0, 2);
                     let lineH = 15;
-                    let startTy = rowY + (rowH - 5) / 2 - ((lines.length - 1) * lineH) / 2;
-                    lines.forEach((ln, li) => ctx.fillText(ln, padX + 70, startTy + li * lineH));
+                    let startTy = rowY + rh / 2 - ((lines.length - 1) * lineH) / 2;
+                    lines.forEach((ln, li) => ctx.fillText(ln, textX, startTy + li * lineH));
                     ctx.restore();
                 }
                 rowY += rowH;
@@ -1787,6 +1855,7 @@
         window.onload = function () {
             resize();
             loadTeamAssets();
+            loadEventIcons();
             generateSchedule();
             calculateStats();
             requestAnimationFrame(render);
