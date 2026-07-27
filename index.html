@@ -871,7 +871,8 @@
         }
 
         function drawMatchupCard(m, x, y, w, phase) {
-            let baseH = 96;
+            let headerH = 18;
+            let baseH = headerH + 96;
             let footerH = 34;
             let h = baseH + footerH;
             drawRect(x, y, w, h, THEME.card, 5);
@@ -882,7 +883,15 @@
             let allFilled = m.ida1 !== '' && m.ida2 !== '' && m.vue1 !== '' && m.vue2 !== '';
             let aggTied = allFilled && (parseInt(m.ida1 || 0) + parseInt(m.vue1 || 0) === parseInt(m.ida2 || 0) + parseInt(m.vue2 || 0));
 
-            let yOff = y;
+            // Encabezado de columnas: deja clarísimo que un número es la IDA y el otro la VUELTA
+            strokeRect(x, y + headerH, w, 1, THEME.border);
+            drawText('IDA', x + w - 69, y + headerH / 2, THEME.textMuted, 9, 'center', '700');
+            drawText('VUELTA', x + w - 29, y + headerH / 2, THEME.textMuted, 9, 'center', '700');
+            if (allFilled) {
+                drawText('GLOBAL', x + 70, y + headerH / 2, THEME.accent, 9, 'left', '700');
+            }
+
+            let yOff = y + headerH;
             [m.t1, m.t2].forEach((team, i) => {
                 let isWinner = m.winner === team;
                 let bg = isWinner ? THEME.cardHover : 'transparent';
@@ -895,8 +904,12 @@
                     drawBadge(team, x + 45, yOff + 24, 11);
                     drawText(team.name.toUpperCase(), x + 65, yOff + 24, isWinner ? THEME.text : THEME.textMuted, 12, 'left', '600');
 
+                    if (allFilled) {
+                        let globalGoals = i === 0 ? (parseInt(m.ida1 || 0) + parseInt(m.vue1 || 0)) : (parseInt(m.ida2 || 0) + parseInt(m.vue2 || 0));
+                        drawText(String(globalGoals), x + w - 116, yOff + 24, isWinner ? THEME.accent : THEME.textMuted, 14, 'center', '700');
+                    }
                     if (aggTied && isWinner && !isFinal) {
-                        drawText("MEJOR TABLA", x + w - 150, yOff + 24, THEME.textMuted, 9, 'right', '700');
+                        drawText("MEJOR TABLA", x + w - 155, yOff + 24, THEME.textMuted, 8.5, 'right', '700');
                     }
                 }
 
@@ -1711,7 +1724,12 @@
             let backHover = hoveredId === 'sim_back';
             drawText('←', outerPad, 25, backHover ? THEME.accent : THEME.text, 20, 'left', '700');
             addHitbox(0, 0, 70, 50, 'sim_back', () => { closeSimulation(); });
-            drawText(`JORNADA ${String(currentRound).padStart(2, '0')}`, vw / 2, 25, THEME.textMuted, 11, 'center', '700');
+            let topLabel = `JORNADA ${String(currentRound).padStart(2, '0')}`;
+            if (s.kind === 'leg') {
+                let phaseLabel = s.isFinal ? 'FINAL' : (s.legMatch && liguilla.semis.includes(s.legMatch) ? 'SEMIFINAL' : 'CUARTOS DE FINAL');
+                topLabel = `${phaseLabel} · ${s.leg === 'ida' ? 'PARTIDO DE IDA' : 'PARTIDO DE VUELTA'}`;
+            }
+            drawText(topLabel, vw / 2, 25, THEME.textMuted, 11, 'center', '700');
 
             let y = 68;
             let headerLabel = s.finished ? 'Final del partido' : (!s.started ? 'Antes del partido' : (s.half === 1 ? 'Primer tiempo' : 'Segundo tiempo'));
@@ -1743,7 +1761,7 @@
             let scoreCardH = 92;
             drawRect(padX, y, contentW, scoreCardH, THEME.card, 6);
             strokeRect(padX, y, contentW, scoreCardH, THEME.border, 1, 6);
-            drawCornerBrackets(padX, y, contentW, scoreCardH, THEME.accent, 12);
+            // (sin esquinas decorativas: se ven mejor limpias)
             drawRect(padX, y, 4, scoreCardH, s.home.c1, 0);
             drawRect(padX + contentW - 4, y, 4, scoreCardH, s.away.c1, 0);
 
