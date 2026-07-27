@@ -79,21 +79,11 @@
         // tiene fondo transparente, blanco o de otro color.
         function drawLeagueLogo(x, y, size) {
             if (leagueLogoImg && leagueLogoImg.complete && leagueLogoImg.naturalWidth > 0) {
-                ctx.save();
-                ctx.beginPath();
-                if (ctx.roundRect) ctx.roundRect(x - size / 2, y - size / 2, size, size, 6);
-                else ctx.rect(x - size / 2, y - size / 2, size, size);
-                ctx.clip();
-                drawRect(x - size / 2, y - size / 2, size, size, '#f4f5f7', 0);
-                let pad = size * 0.1;
-                let boxW = size - pad, boxH = size - pad;
-                let scale = Math.min(boxW / leagueLogoImg.naturalWidth, boxH / leagueLogoImg.naturalHeight) * LEAGUE_LOGO_SCALE;
+                let scale = Math.min(size / leagueLogoImg.naturalWidth, size / leagueLogoImg.naturalHeight) * LEAGUE_LOGO_SCALE;
                 let dw = leagueLogoImg.naturalWidth * scale, dh = leagueLogoImg.naturalHeight * scale;
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
                 ctx.drawImage(leagueLogoImg, x - dw / 2, y - dh / 2, dw, dh);
-                ctx.restore();
-                strokeRect(x - size / 2, y - size / 2, size, size, 'rgba(255,255,255,0.14)', 1, 6);
                 return true;
             }
             return false;
@@ -1451,6 +1441,7 @@
                 subsDone: { h: 0, a: 0 },
                 cardsHome: {}, cardsAway: {},
                 sentOffHome: 0, sentOffAway: 0,
+                followBottom: true,
                 onFinish
             };
         }
@@ -1467,6 +1458,7 @@
                     accumMs: 0, subsDone: { ...snap.subsDone },
                     cardsHome: { ...snap.cardsHome }, cardsAway: { ...snap.cardsAway },
                     sentOffHome: snap.sentOffHome, sentOffAway: snap.sentOffAway,
+                    followBottom: false,
                     onFinish: null
                 };
             }
@@ -1477,6 +1469,7 @@
                 playing: false, finished: true, started: true, speed: 1,
                 stoppage1: 0, stoppage2: 0, accumMs: 0, subsDone: { h: 3, a: 3 },
                 cardsHome: {}, cardsAway: {}, sentOffHome: 0, sentOffAway: 0,
+                followBottom: false,
                 onFinish: null
             };
         }
@@ -1844,7 +1837,19 @@
             });
             let logContentH = rowY - (logTop + simScrollY);
             simMaxScrollY = Math.max(0, logContentH - (logBottom - logTop) + 20);
+            if (s.followBottom) simScrollY = -simMaxScrollY;
             ctx.restore();
+
+            if (!s.followBottom && !s.finished && simMaxScrollY > 4) {
+                let fbW = 130, fbH = 30;
+                let fbX = padX + contentW - fbW - 6;
+                let fbY = logBottom - fbH - 6;
+                let fbHover = hoveredId === 'sim_follow_bottom';
+                drawRect(fbX, fbY, fbW, fbH, fbHover ? THEME.accent : THEME.card, 5);
+                strokeRect(fbX, fbY, fbW, fbH, THEME.accent, 1, 5);
+                drawText('▼ IR AL FINAL', fbX + fbW / 2, fbY + fbH / 2, fbHover ? '#0a0d12' : THEME.accent, 10, 'center', '700');
+                addHitbox(fbX, fbY, fbW, fbH, 'sim_follow_bottom', () => { s.followBottom = true; });
+            }
 
             // Botones inferiores
             let btnY = vh - 54;
@@ -1977,6 +1982,7 @@
         canvas.addEventListener('wheel', (e) => {
             if (appState === 'intro') return;
             if (simState) {
+                simState.followBottom = false;
                 simScrollY -= e.deltaY;
                 simScrollY = Math.min(0, Math.max(simScrollY, -simMaxScrollY));
                 e.preventDefault();
@@ -2008,6 +2014,7 @@
             let dx = e.touches[0].clientX - touchStartX;
 
             if (simState) {
+                simState.followBottom = false;
                 simScrollY = initScrollY + dy;
                 simScrollY = Math.min(0, Math.max(simScrollY, -simMaxScrollY));
                 return;
