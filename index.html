@@ -343,6 +343,10 @@
 
         // --- Simulador de partidos en vivo, minuto a minuto -------------------------
         let simState = null;
+        let confirmDialog = null;
+        function askConfirm(message, onAccept) {
+            confirmDialog = { message, onAccept };
+        }
         let simScrollY = 0;
         let simMaxScrollY = 0;
 
@@ -684,22 +688,22 @@
         function simulateRoundInstant() {
             let round = tournamentData[currentRound - 1];
             let pending = round.filter(m => m.hScore === '' || m.aScore === '');
-            let toSim = pending;
-            if (pending.length === 0) {
-                if (!confirm(`La Jornada ${currentRound} ya tiene todos los resultados. ¿Volver a simularla completa desde cero?`)) return;
-                toSim = round;
-            } else if (!confirm(`Se van a simular ${pending.length} partido(s) de la Jornada ${currentRound} con minuto a minuto completo (de forma instantánea). ¿Continuar?`)) {
-                return;
-            }
-            toSim.forEach(m => {
-                let tH = TEAMS.find(t => t.id === m.home);
-                let tA = TEAMS.find(t => t.id === m.away);
-                simulateMatchInstant(m, tH, tA, (s, snap) => {
-                    m.hScore = s.hGoals; m.aScore = s.aGoals; m._sim = snap;
+            let allDone = pending.length === 0;
+            let msg = allDone
+                ? `La Jornada ${currentRound} ya tiene todos los resultados.\n¿Volver a simularla completa desde cero?`
+                : `Se van a simular ${pending.length} partido(s) de la Jornada ${currentRound}\ncon minuto a minuto completo (de forma instantánea).`;
+            askConfirm(msg, () => {
+                let toSim = allDone ? round : pending;
+                toSim.forEach(m => {
+                    let tH = TEAMS.find(t => t.id === m.home);
+                    let tA = TEAMS.find(t => t.id === m.away);
+                    simulateMatchInstant(m, tH, tA, (s, snap) => {
+                        m.hScore = s.hGoals; m.aScore = s.aGoals; m._sim = snap;
+                    });
                 });
+                calculateStats();
+                if (currentRound < TOTAL_ROUNDS) currentRound++;
             });
-            calculateStats();
-            if (currentRound < TOTAL_ROUNDS) currentRound++;
         }
 
         function renderJornada(startY) {
@@ -1898,6 +1902,44 @@
             simState = null;
         }
 
+        function renderConfirmDialog() {
+            drawRect(0, 0, vw, vh, 'rgba(5,7,10,0.72)', 0);
+
+            let boxW = Math.min(vw - 40, 420);
+            let lines = confirmDialog.message.split('\n');
+            let boxH = 96 + lines.length * 20;
+            let boxX = vw / 2 - boxW / 2;
+            let boxY = vh / 2 - boxH / 2;
+
+            drawRect(boxX, boxY, boxW, boxH, THEME.card, 8);
+            strokeRect(boxX, boxY, boxW, boxH, THEME.border, 1, 8);
+            drawRect(boxX, boxY, boxW, 4, THEME.accent, 0);
+
+            let ty = boxY + 34;
+            lines.forEach(ln => {
+                drawText(ln, vw / 2, ty, THEME.text, 13, 'center', '600');
+                ty += 20;
+            });
+
+            let btnW = (boxW - 48) / 2;
+            let btnY = boxY + boxH - 54;
+            let hoverOk = hoveredId === 'confirm_ok';
+            let hoverCancel = hoveredId === 'confirm_cancel';
+
+            drawRect(boxX + 20, btnY, btnW, 38, hoverOk ? '#dab873' : THEME.accent, 5);
+            drawText('ACEPTAR', boxX + 20 + btnW / 2, btnY + 19, '#0a0d12', 12, 'center', '700');
+            addHitbox(boxX + 20, btnY, btnW, 38, 'confirm_ok', () => {
+                let cb = confirmDialog.onAccept;
+                confirmDialog = null;
+                if (cb) cb();
+            });
+
+            drawRect(boxX + 28 + btnW, btnY, btnW, 38, hoverCancel ? THEME.cardHover : THEME.card, 5);
+            strokeRect(boxX + 28 + btnW, btnY, btnW, 38, THEME.border, 1, 5);
+            drawText('CANCELAR', boxX + 28 + btnW + btnW / 2, btnY + 19, hoverCancel ? THEME.text : THEME.textMuted, 12, 'center', '700');
+            addHitbox(boxX + 28 + btnW, btnY, btnW, 38, 'confirm_cancel', () => { confirmDialog = null; });
+        }
+
         function render(time) {
             globalTime = time / 1000;
             let dt = lastFrameTime ? (time - lastFrameTime) : 16;
@@ -1948,6 +1990,11 @@
                 }
 
                 ctx.restore();
+            }
+
+            if (confirmDialog) {
+                hitboxes = []; // bloquea clics del fondo mientras el diálogo está abierto
+                renderConfirmDialog();
             }
 
             requestAnimationFrame(render);
