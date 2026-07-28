@@ -270,9 +270,14 @@
             if (!team.rosterKey || !ligaMX[team.rosterKey]) return null;
             let arr = ligaMX[team.rosterKey][category];
             if (!arr || arr.length === 0) return null;
+            let available = p => !usedKeys.has(team.short + '_' + p.name);
             let candidate = null;
-            if (posHint) candidate = arr.find(p => p.pos === posHint && !usedKeys.has(team.short + '_' + p.name));
-            if (!candidate) candidate = arr.find(p => !usedKeys.has(team.short + '_' + p.name));
+            // 1) titular confirmado en la posición pedida, 2) cualquier titular confirmado,
+            // 3) coincidencia de posición sin confirmar, 4) cualquiera disponible
+            if (posHint) candidate = arr.find(p => p.pos === posHint && p.titular === true && available(p));
+            if (!candidate) candidate = arr.find(p => p.titular === true && available(p));
+            if (!candidate && posHint) candidate = arr.find(p => p.pos === posHint && available(p));
+            if (!candidate) candidate = arr.find(available);
             if (candidate) usedKeys.add(team.short + '_' + candidate.name);
             return candidate;
         }
@@ -710,10 +715,10 @@
                 let isHover = hoveredId === `rnd_${i}`;
 
                 if (isActive) {
-                    drawRect(bx, y, roundBtnW, 38, THEME.accent, 3);
+                    drawRect(bx, y, roundBtnW, 38, THEME.accent, 5);
                 } else {
-                    drawRect(bx, y, roundBtnW, 38, isHover ? THEME.cardHover : THEME.card, 3);
-                    strokeRect(bx, y, roundBtnW, 38, isHover ? THEME.borderHover : THEME.border, 1, 3);
+                    drawRect(bx, y, roundBtnW, 38, isHover ? THEME.cardHover : THEME.card, 5);
+                    strokeRect(bx, y, roundBtnW, 38, isHover ? THEME.borderHover : THEME.border, 1, 5);
                 }
                 drawText(`J${i}`, bx + roundBtnW / 2, y + 19, isActive ? '#0a0d12' : THEME.textMuted, 12, 'center', '700');
 
@@ -726,30 +731,30 @@
             maxScrollX = roundsTotalW > vw ? roundsTotalW - vw + 40 : 0;
             if (maxScrollX === 0) scrollX = 0;
 
-            y += 58;
+            y += 60;
 
-            drawRect(padX, y, contentW, 54, THEME.card, 4);
-            strokeRect(padX, y, contentW, 54, THEME.border, 1, 4);
-            drawText(`JORNADA ${String(currentRound).padStart(2, '0')}`, padX + 22, y + 27, THEME.text, 17, 'left', '700');
+            drawRect(padX, y, contentW, 56, THEME.card, 6);
+            strokeRect(padX, y, contentW, 56, THEME.border, 1, 6);
+            drawText(`JORNADA ${String(currentRound).padStart(2, '0')}`, padX + 24, y + 28, THEME.text, 17, 'left', '700');
 
             let simAllW = vw < 600 ? 168 : 200;
-            let simAllX = padX + contentW - simAllW - 14;
+            let simAllX = padX + contentW - simAllW - 16;
             let simAllHover = hoveredId === 'sim_round';
-            drawRect(simAllX, y + 12, simAllW, 30, simAllHover ? THEME.accent : THEME.card, 3);
-            strokeRect(simAllX, y + 12, simAllW, 30, THEME.accent, 1, 3);
-            drawText('SIMULAR JORNADA →', simAllX + simAllW / 2, y + 27, simAllHover ? '#0a0d12' : THEME.accent, 10.5, 'center', '700');
-            addHitbox(simAllX, y + 12, simAllW, 30, 'sim_round', () => { simulateRoundInstant(); });
+            drawRect(simAllX, y + 13, simAllW, 30, simAllHover ? THEME.accent : THEME.card, 5);
+            strokeRect(simAllX, y + 13, simAllW, 30, THEME.accent, 1, 5);
+            drawText('SIMULAR JORNADA →', simAllX + simAllW / 2, y + 28, simAllHover ? '#0a0d12' : THEME.accent, 10.5, 'center', '700');
+            addHitbox(simAllX, y + 13, simAllW, 30, 'sim_round', () => { simulateRoundInstant(); });
 
-            y += 64;
+            y += 72;
             let matches = tournamentData[currentRound - 1];
 
             matches.forEach((m, idx) => {
-                let rowH = 68;
+                let rowH = 72;
                 let tH = TEAMS.find(t => t.id === m.home);
                 let tA = TEAMS.find(t => t.id === m.away);
 
-                drawRect(padX, y, contentW, rowH, THEME.card, 4);
-                strokeRect(padX, y, contentW, rowH, THEME.border, 1, 4);
+                drawRect(padX, y, contentW, rowH, THEME.card, 6);
+                strokeRect(padX, y, contentW, rowH, THEME.border, 1, 6);
 
                 let isMobile = vw < 550;
                 let midX = padX + contentW / 2;
@@ -760,8 +765,8 @@
                 let inputW = 36, inputH = 38;
                 let hHasScore = m.hScore !== '';
                 let hHover = hoveredId === `hsc_${idx}`;
-                drawRect(midX - 30, y + (rowH - inputH) / 2, inputW, inputH, hHover ? THEME.cardHover : THEME.bgDark, 3);
-                strokeRect(midX - 30, y + (rowH - inputH) / 2, inputW, inputH, hHasScore ? THEME.accent : (hHover ? THEME.borderHover : THEME.border), hHasScore ? 1.5 : 1, 3);
+                drawRect(midX - 30, y + (rowH - inputH) / 2, inputW, inputH, hHover ? THEME.cardHover : THEME.bgDark, 4);
+                strokeRect(midX - 30, y + (rowH - inputH) / 2, inputW, inputH, hHasScore ? THEME.accent : (hHover ? THEME.borderHover : THEME.border), hHasScore ? 1.5 : 1, 4);
                 drawText(hHasScore ? m.hScore : '–', midX - 30 + inputW / 2, y + rowH / 2, hHasScore ? THEME.text : THEME.textMuted, 16, 'center', '700');
                 addHitbox(midX - 30, y + (rowH - inputH) / 2, inputW, inputH, `hsc_${idx}`, (screenBox) => { openScoreInput(screenBox, m, 'hScore', () => calculateStats()); });
 
@@ -769,8 +774,8 @@
 
                 let aHasScore = m.aScore !== '';
                 let aHover = hoveredId === `asc_${idx}`;
-                drawRect(midX + 34, y + (rowH - inputH) / 2, inputW, inputH, aHover ? THEME.cardHover : THEME.bgDark, 3);
-                strokeRect(midX + 34, y + (rowH - inputH) / 2, inputW, inputH, aHasScore ? THEME.accent : (aHover ? THEME.borderHover : THEME.border), aHasScore ? 1.5 : 1, 3);
+                drawRect(midX + 34, y + (rowH - inputH) / 2, inputW, inputH, aHover ? THEME.cardHover : THEME.bgDark, 4);
+                strokeRect(midX + 34, y + (rowH - inputH) / 2, inputW, inputH, aHasScore ? THEME.accent : (aHover ? THEME.borderHover : THEME.border), aHasScore ? 1.5 : 1, 4);
                 drawText(aHasScore ? m.aScore : '–', midX + 34 + inputW / 2, y + rowH / 2, aHasScore ? THEME.text : THEME.textMuted, 16, 'center', '700');
                 addHitbox(midX + 34, y + (rowH - inputH) / 2, inputW, inputH, `asc_${idx}`, (screenBox) => { openScoreInput(screenBox, m, 'aScore', () => calculateStats()); });
 
@@ -778,7 +783,7 @@
                 drawText(isMobile ? tA.short : tA.name.toUpperCase(), midX + 123, y + rowH / 2, THEME.text, 13, 'left', '600');
 
                 let playR = 15;
-                let playCx = padX + contentW - playR - 12;
+                let playCx = padX + contentW - playR - 14;
                 let playCy = y + rowH / 2;
                 let playHover = hoveredId === `play_${idx}`;
                 ctx.fillStyle = playHover ? THEME.accent : THEME.accentSoft;
@@ -793,7 +798,7 @@
                 ctx.fill();
                 addHitbox(playCx - playR, playCy - playR, playR * 2, playR * 2, `play_${idx}`, () => { openSimulation(m, tH, tA); });
 
-                y += rowH + 8;
+                y += rowH + 10;
             });
 
             contentH = y - (startY + scrollY);
@@ -810,11 +815,11 @@
             maxScrollX = tableW > contentW ? tableW - contentW : 0;
             if (maxScrollX === 0) scrollX = 0;
 
-            drawRect(padX + scrollX, y, tableW, 54, THEME.cardHover, 4);
-            strokeRect(padX + scrollX, y, tableW, 54, THEME.border, 1, 4);
-            drawText("CLASIFICACIÓN GENERAL", padX + scrollX + 22, y + 27, THEME.text, 16, 'left', '700');
+            drawRect(padX + scrollX, y, tableW, 56, THEME.cardHover, 6);
+            strokeRect(padX + scrollX, y, tableW, 56, THEME.border, 1, 6);
+            drawText("CLASIFICACIÓN GENERAL", padX + scrollX + 24, y + 28, THEME.text, 16, 'left', '700');
 
-            y += 60;
+            y += 64;
 
             let cols = [
                 { l: '#', x: 20, w: 30 }, { l: 'CLUB', x: 65, w: 150 }, { l: 'PTS', x: 260, w: 40 },
@@ -826,16 +831,16 @@
                 drawText(c.l, padX + scrollX + c.x, y + 12, THEME.textMuted, 10, 'left', '700');
             });
 
-            y += 30;
+            y += 32;
 
             teamStats.forEach((t, i) => {
-                let rowH = 44;
+                let rowH = 46;
                 let isTop8 = i < 8;
                 let bg = isTop8 ? THEME.card : THEME.bgDark;
 
-                drawRect(padX + scrollX, y, tableW, rowH, bg, 2);
-                strokeRect(padX + scrollX, y, tableW, rowH, THEME.border, 1, 2);
-                if (i === 7) strokeRect(padX + scrollX, y + rowH, tableW, 1, THEME.accent);
+                drawRect(padX + scrollX, y, tableW, rowH, bg, 4);
+                strokeRect(padX + scrollX, y, tableW, rowH, THEME.border, 1, 4);
+                if (i === 7) strokeRect(padX + scrollX, y + rowH + 2, tableW, 1, THEME.accent);
 
                 let txtColor = isTop8 ? THEME.text : THEME.textMuted;
                 let rankColor = i < 8 ? THEME.text : THEME.textMuted;
@@ -854,19 +859,19 @@
                 let difColor = t.gd > 0 ? THEME.accent : t.gd < 0 ? THEME.red : THEME.textMuted;
                 drawText(t.gd > 0 ? '+' + t.gd : t.gd, padX + scrollX + cols[8].x, y + rowH / 2, difColor, 12, 'left', '700');
 
-                y += rowH + 3;
+                y += rowH + 6;
             });
 
             maxScrollY = Math.max(0, y - (startY + scrollY) - vh + 100);
         }
 
         function drawMatchupCard(m, x, y, w, phase) {
-            let headerH = 18;
+            let headerH = 26;
             let baseH = headerH + 96;
-            let footerH = 34;
+            let footerH = 36;
             let h = baseH + footerH;
-            drawRect(x, y, w, h, THEME.card, 5);
-            strokeRect(x, y, w, h, THEME.border, 1, 5);
+            drawRect(x, y, w, h, THEME.card, 6);
+            strokeRect(x, y, w, h, THEME.border, 1, 6);
 
             if (!m) return h;
             let isFinal = phase === 'final';
@@ -875,10 +880,10 @@
 
             // Encabezado de columnas: deja clarísimo que un número es la IDA y el otro la VUELTA
             strokeRect(x, y + headerH, w, 1, THEME.border);
-            drawText('IDA', x + w - 69, y + headerH / 2, THEME.textMuted, 9, 'center', '700');
-            drawText('VUELTA', x + w - 29, y + headerH / 2, THEME.textMuted, 9, 'center', '700');
+            drawText('IDA', x + w - 75, y + headerH / 2, THEME.textMuted, 9, 'center', '700');
+            drawText('VUELTA', x + w - 35, y + headerH / 2, THEME.textMuted, 9, 'center', '700');
             if (allFilled) {
-                drawText('GLOBAL', x + 70, y + headerH / 2, THEME.accent, 9, 'left', '700');
+                drawText('GLOBAL', x + 74, y + headerH / 2, THEME.accent, 9, 'left', '700');
             }
 
             let yOff = y + headerH;
@@ -890,9 +895,9 @@
                 if (i === 0) strokeRect(x, yOff + 48, w, 1, THEME.border);
 
                 if (team) {
-                    drawText(team.rank, x + 20, yOff + 24, THEME.textMuted, 10, 'center', '600');
-                    drawBadge(team, x + 45, yOff + 24, 11);
-                    drawText(team.name.toUpperCase(), x + 65, yOff + 24, isWinner ? THEME.text : THEME.textMuted, 12, 'left', '600');
+                    drawText(team.rank, x + 24, yOff + 24, THEME.textMuted, 10, 'center', '600');
+                    drawBadge(team, x + 49, yOff + 24, 11);
+                    drawText(team.name.toUpperCase(), x + 69, yOff + 24, isWinner ? THEME.text : THEME.textMuted, 12, 'left', '600');
 
                     if (allFilled) {
                         let globalGoals = i === 0 ? (parseInt(m.ida1 || 0) + parseInt(m.vue1 || 0)) : (parseInt(m.ida2 || 0) + parseInt(m.vue2 || 0));
@@ -909,19 +914,19 @@
 
                 let valIda = m[fieldIda] !== '' ? m[fieldIda] : '–';
                 let hoverIda = hoveredId === `lig_${phase}_${m.id}_${fieldIda}`;
-                drawRect(x + w - 84, yOff + (48 - inH) / 2, inW, inH, hoverIda ? THEME.cardHover : THEME.bgDark, 3);
-                strokeRect(x + w - 84, yOff + (48 - inH) / 2, inW, inH, valIda !== '–' ? THEME.accent : THEME.border, valIda !== '–' ? 1.5 : 1, 3);
-                drawText(valIda, x + w - 69, yOff + 24, valIda !== '–' ? THEME.text : THEME.textMuted, 13, 'center', '700');
-                addHitbox(x + w - 84, yOff + (48 - inH) / 2, inW, inH, `lig_${phase}_${m.id}_${fieldIda}`, (box) => {
+                drawRect(x + w - 90, yOff + (48 - inH) / 2, inW, inH, hoverIda ? THEME.cardHover : THEME.bgDark, 3);
+                strokeRect(x + w - 90, yOff + (48 - inH) / 2, inW, inH, valIda !== '–' ? THEME.accent : THEME.border, valIda !== '–' ? 1.5 : 1, 3);
+                drawText(valIda, x + w - 75, yOff + 24, valIda !== '–' ? THEME.text : THEME.textMuted, 13, 'center', '700');
+                addHitbox(x + w - 90, yOff + (48 - inH) / 2, inW, inH, `lig_${phase}_${m.id}_${fieldIda}`, (box) => {
                     openScoreInput(box, m, fieldIda, () => { m.winner = calculateWinner(m, isFinal); checkLiguillaProgress(); });
                 });
 
                 let valVue = m[fieldVue] !== '' ? m[fieldVue] : '–';
                 let hoverVue = hoveredId === `lig_${phase}_${m.id}_${fieldVue}`;
-                drawRect(x + w - 44, yOff + (48 - inH) / 2, inW, inH, hoverVue ? THEME.cardHover : THEME.bgDark, 3);
-                strokeRect(x + w - 44, yOff + (48 - inH) / 2, inW, inH, valVue !== '–' ? THEME.accent : THEME.border, valVue !== '–' ? 1.5 : 1, 3);
-                drawText(valVue, x + w - 29, yOff + 24, valVue !== '–' ? THEME.text : THEME.textMuted, 13, 'center', '700');
-                addHitbox(x + w - 44, yOff + (48 - inH) / 2, inW, inH, `lig_${phase}_${m.id}_${fieldVue}`, (box) => {
+                drawRect(x + w - 50, yOff + (48 - inH) / 2, inW, inH, hoverVue ? THEME.cardHover : THEME.bgDark, 3);
+                strokeRect(x + w - 50, yOff + (48 - inH) / 2, inW, inH, valVue !== '–' ? THEME.accent : THEME.border, valVue !== '–' ? 1.5 : 1, 3);
+                drawText(valVue, x + w - 35, yOff + 24, valVue !== '–' ? THEME.text : THEME.textMuted, 13, 'center', '700');
+                addHitbox(x + w - 50, yOff + (48 - inH) / 2, inW, inH, `lig_${phase}_${m.id}_${fieldVue}`, (box) => {
                     openScoreInput(box, m, fieldVue, () => { m.winner = calculateWinner(m, isFinal); checkLiguillaProgress(); });
                 });
 
@@ -975,13 +980,13 @@
 
             let btnW = 170;
             let isHover = hoveredId === 'gen_lig';
-            drawRect(padX, y, btnW, 40, isHover ? '#dab873' : THEME.accent, 3);
+            drawRect(padX, y, btnW, 40, isHover ? '#dab873' : THEME.accent, 5);
             drawText("GENERAR LLAVES", padX + btnW / 2, y + 20, '#0a0d12', 12, 'center', '700');
             addHitbox(padX, y, btnW, 40, 'gen_lig', () => { generateLiguilla(); });
 
             y += 68;
             let isMobile = vw < 800;
-            let cardW = isMobile ? contentW : (contentW - 20) / 2;
+            let cardW = isMobile ? contentW : (contentW - 28) / 2;
 
             drawText("CUARTOS DE FINAL", padX, y + 8, THEME.text, 16, 'left', '700');
             y += 32;
@@ -990,13 +995,13 @@
                 liguilla.cuartos.forEach((m, i) => {
                     let col = isMobile ? 0 : i % 2;
                     let row = isMobile ? i : Math.floor(i / 2);
-                    let cx = padX + (col * (cardW + 20));
-                    let cy = y + (row * 148);
+                    let cx = padX + (col * (cardW + 28));
+                    let cy = y + (row * 180);
                     drawMatchupCard(m, cx, cy, cardW, 'cuartos');
-                    cY = Math.max(cY, cy + 148);
+                    cY = Math.max(cY, cy + 180);
                 });
             }
-            y = cY + 20;
+            y = cY + 32;
 
             drawText("SEMIFINALES", padX, y + 8, THEME.text, 16, 'left', '700');
             y += 32;
@@ -1005,14 +1010,14 @@
                 liguilla.semis.forEach((m, i) => {
                     let col = isMobile ? 0 : i % 2;
                     let row = isMobile ? i : 0;
-                    let cx = padX + (col * (cardW + 20));
-                    let cy = y + (row * 148);
+                    let cx = padX + (col * (cardW + 28));
+                    let cy = y + (row * 180);
                     drawMatchupCard(m, cx, cy, cardW, 'semis');
-                    sY = Math.max(sY, cy + 148);
+                    sY = Math.max(sY, cy + 180);
                 });
-                y = sY + 20;
+                y = sY + 32;
             } else {
-                drawRect(padX, y, contentW, 54, THEME.card, 4); strokeRect(padX, y, contentW, 54, THEME.border, 1, 4);
+                drawRect(padX, y, contentW, 54, THEME.card, 6); strokeRect(padX, y, contentW, 54, THEME.border, 1, 6);
                 drawText("Completa cuartos para definir", padX + contentW / 2, y + 27, THEME.textMuted, 12, 'center', '500');
                 y += 74;
             }
@@ -1023,19 +1028,19 @@
                 let fW = isMobile ? contentW : Math.min(contentW, 600);
                 let fX = padX + (contentW - fW) / 2;
 
-                strokeRect(fX, y, fW, 96, THEME.accent, 1.5, 4);
+                strokeRect(fX, y, fW, 96, THEME.accent, 1.5, 6);
                 let fh = drawMatchupCard(liguilla.final, fX, y, fW, 'final');
                 y += fh + 26;
 
                 if (liguilla.final.winner && liguilla.final.winner !== 'PENALTIES') {
-                    drawRect(padX, y, contentW, 90, THEME.accentSoft, 4);
-                    strokeRect(padX, y, contentW, 90, THEME.accent, 1, 4);
+                    drawRect(padX, y, contentW, 90, THEME.accentSoft, 6);
+                    strokeRect(padX, y, contentW, 90, THEME.accent, 1, 6);
                     drawText("CAMPEÓN", padX + contentW / 2, y + 30, THEME.accent, 13, 'center', '700');
                     drawText(liguilla.final.winner.name.toUpperCase(), padX + contentW / 2, y + 58, THEME.text, 24, 'center', '700', THEME.fontDisplay);
                     y += 110;
                 }
             } else {
-                drawRect(padX, y, contentW, 54, THEME.card, 4); strokeRect(padX, y, contentW, 54, THEME.border, 1, 4);
+                drawRect(padX, y, contentW, 54, THEME.card, 6); strokeRect(padX, y, contentW, 54, THEME.border, 1, 6);
                 drawText("Completa semifinales para definir", padX + contentW / 2, y + 27, THEME.textMuted, 12, 'center', '500');
                 y += 74;
             }
@@ -1044,48 +1049,49 @@
         }
 
         function awardCard(x, y, w, h, label, value, sub, team) {
-            drawRect(x, y, w, h, THEME.card, 4);
-            strokeRect(x, y, w, h, THEME.border, 1, 4);
-            drawText(label, x + 18, y + 22, THEME.textMuted, 10, 'left', '700');
-            if (team) drawBadge(team, x + w - 26, y + 22, 11);
-            drawText(value, x + 18, y + h - 34, THEME.text, 17, 'left', '700', THEME.fontDisplay);
-            drawText(sub, x + 18, y + h - 14, THEME.textMuted, 11, 'left', '500');
+            drawRect(x, y, w, h, THEME.card, 6);
+            strokeRect(x, y, w, h, THEME.border, 1, 6);
+            drawText(label, x + 20, y + 24, THEME.textMuted, 10, 'left', '700');
+            if (team) drawBadge(team, x + w - 28, y + 24, 11);
+            drawText(value, x + 20, y + h - 36, THEME.text, 17, 'left', '700', THEME.fontDisplay);
+            drawText(sub, x + 20, y + h - 15, THEME.textMuted, 11, 'left', '500');
         }
 
         // Tabla completa de goleadores/asistidores, con TODOS los jugadores que anotaron
         function drawRankingTable(x, y, w, title, list, valueKey) {
-            drawRect(x, y, w, 44, THEME.cardHover, 4);
-            strokeRect(x, y, w, 44, THEME.border, 1, 4);
-            drawText(title, x + 18, y + 22, THEME.text, 13, 'left', '700');
-            drawText(`${list.length} jugadores`, x + w - 16, y + 22, THEME.textMuted, 10, 'right', '500');
-            y += 44;
+            drawRect(x, y, w, 46, THEME.cardHover, 6);
+            strokeRect(x, y, w, 46, THEME.border, 1, 6);
+            drawText(title, x + 20, y + 23, THEME.text, 13, 'left', '700');
+            drawText(`${list.length} jugadores`, x + w - 18, y + 23, THEME.textMuted, 10, 'right', '500');
+            y += 46 + 8;
 
             if (list.length === 0) {
-                drawRect(x, y, w, 46, THEME.card, 0); strokeRect(x, y, w, 46, THEME.border, 1, 0);
+                drawRect(x, y, w, 46, THEME.card, 5); strokeRect(x, y, w, 46, THEME.border, 1, 5);
                 drawText("Sin datos todavía", x + w / 2, y + 23, THEME.textMuted, 11, 'center', '500');
                 return y + 46;
             }
 
+            drawRect(x, y, w, list.length * 38, THEME.card, 5);
+            strokeRect(x, y, w, list.length * 38, THEME.border, 1, 5);
+
             list.forEach((item, i) => {
-                let rowH = 36;
-                let bg = i % 2 === 0 ? THEME.card : THEME.bgDark;
-                drawRect(x, y, w, rowH, bg, 0);
-                strokeRect(x, y, w, rowH, THEME.border, 1, 0);
+                let rowH = 38;
+                if (i > 0) strokeRect(x + 8, y, w - 16, 1, THEME.border);
 
                 let rankColor = i < 3 ? THEME.accent : THEME.textMuted;
-                drawText(String(i + 1), x + 16, y + rowH / 2, rankColor, 11, 'left', '700');
-                drawBadge(item.team, x + 42, y + rowH / 2, 10);
-                drawText(item.player, x + 60, y + rowH / 2, THEME.text, 12, 'left', '600');
+                drawText(String(i + 1), x + 18, y + rowH / 2, rankColor, 11, 'left', '700');
+                drawBadge(item.team, x + 44, y + rowH / 2, 10);
+                drawText(item.player, x + 62, y + rowH / 2, THEME.text, 12, 'left', '600');
 
                 let posLabel = item.role || item.cat || '';
-                drawText(posLabel, x + w - 130, y + rowH / 2, THEME.textMuted, 9.5, 'left', '500');
-                drawText(item.team.short, x + w - 62, y + rowH / 2, THEME.textMuted, 10, 'left', '500');
-                drawText(String(item[valueKey]), x + w - 20, y + rowH / 2, THEME.text, 13, 'right', '700');
+                drawText(posLabel, x + w - 132, y + rowH / 2, THEME.textMuted, 9.5, 'left', '500');
+                drawText(item.team.short, x + w - 64, y + rowH / 2, THEME.textMuted, 10, 'left', '500');
+                drawText(String(item[valueKey]), x + w - 22, y + rowH / 2, THEME.text, 13, 'right', '700');
 
                 y += rowH;
             });
 
-            return y + 10;
+            return y + 14;
         }
 
         function renderPlantel(startY) {
@@ -1094,13 +1100,13 @@
             let y = startY + scrollY + 25;
             scrollX = 0; maxScrollX = 0;
 
-            drawRect(padX, y, contentW, 54, THEME.cardHover, 4);
-            strokeRect(padX, y, contentW, 54, THEME.border, 1, 4);
-            drawText("PREMIOS DE LA TEMPORADA", padX + 22, y + 27, THEME.text, 16, 'left', '700');
-            y += 70;
+            drawRect(padX, y, contentW, 56, THEME.cardHover, 6);
+            strokeRect(padX, y, contentW, 56, THEME.border, 1, 6);
+            drawText("PREMIOS DE LA TEMPORADA", padX + 24, y + 28, THEME.text, 16, 'left', '700');
+            y += 74;
 
             if (!awards.xi || awards.scorers.length === 0) {
-                drawRect(padX, y, contentW, 70, THEME.card, 4); strokeRect(padX, y, contentW, 70, THEME.border, 1, 4);
+                drawRect(padX, y, contentW, 70, THEME.card, 6); strokeRect(padX, y, contentW, 70, THEME.border, 1, 6);
                 drawText("Registra resultados en Jornada para calcular los premios", padX + contentW / 2, y + 35, THEME.textMuted, 12, 'center', '500');
                 maxScrollY = Math.max(0, y + 90 - (startY + scrollY) - vh + 100);
                 return;
@@ -1108,9 +1114,9 @@
 
             let isMobile = vw < 720;
             let cardsPerRow = isMobile ? 1 : 3;
-            let gap = 16;
+            let gap = 18;
             let cardW = (contentW - gap * (cardsPerRow - 1)) / cardsPerRow;
-            let cardH = 96;
+            let cardH = 100;
 
             let topScorer = awards.scorers[0];
             let topAssist = awards.assists[0];
@@ -1241,6 +1247,13 @@
         // oficial de alineación confirmada (eso cambia partido a partido en la vida real),
         // pero evita que el protagonismo caiga siempre en gente de banca/filial.
         function playerImportance(p, idx) {
+            // Si tenemos el dato real de si es titular confirmado (de la alineación
+            // probable), eso manda con muchísimo peso. Si no tenemos el dato (jugador
+            // fuera del reporte de alineaciones), se usa la heurística de dorsal/orden
+            // como respaldo, igual que antes.
+            if (p.titular === true) return 6.0;
+            if (p.titular === false) return 0.12;
+
             let d = p.dorsal;
             let dorsalW;
             if (d === null || d === undefined) dorsalW = 0.6;
